@@ -26,27 +26,24 @@ impl Player {
 
     pub fn start_game(&mut self) {
         self.points = 0;
+    }
+
+    pub fn start_hand(&mut self) {
         self.brooms = 0;
-        self.hand_visible = false;
     }
 
-    pub fn end_game(&mut self) -> u8 {
-        self.points
-    }
-
-    pub fn start_hand(&mut self, deck: &mut Vec<Card>) {
-        self.brooms = 0;
-        self.hand_visible = false;
-        self.draw(deck);
-    }
-
-    pub fn end_hand(&mut self, deck: &mut Vec<Card>) {
+    pub fn end_hand(&mut self, deck: &mut Vec<Card>) -> Option<u8>{
+        let mut total_points = 0;
         // TODO: conteggio punti
-        self.points += self.brooms;
+        total_points += self.brooms;
+        self.points += total_points;
         deck.append(&mut self.catched);
+
+        Some(total_points)
     }
 
     pub fn draw(&mut self, deck: &mut Vec<Card>) {
+        self.hand_visible = false;
         for _ in 0..3 {
             self.hand.push(deck.pop().unwrap());
         }

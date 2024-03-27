@@ -7,15 +7,5 @@ fn main() {
     println!("Alice: player {}\nBob: player {}", alice, bob);
 
     println!("Cirulla! {:?}\n", game);
-    game.start_round().unwrap();
 
-    println!("Cirulla! {:?}\n", game);
-    game.player_draw(alice).unwrap();
-    game.player_draw(bob).unwrap();
-    
-    println!("Cirulla! {:?}\n", game);
-
-    game.end_round().unwrap();
-
-    println!("Cirulla! {:?}\n", game);
 }
