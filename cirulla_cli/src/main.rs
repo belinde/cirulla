@@ -1,6 +1,7 @@
 use clap::{Parser, ValueEnum};
 
 mod local;
+mod ui;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 enum Mode {

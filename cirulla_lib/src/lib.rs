@@ -2,6 +2,7 @@ mod card;
 mod game;
 mod player;
 
+pub use card::Card;
+pub use player::Player;
 pub use game::Game;
 pub use game::NextAction;
-pub use player::Player;
