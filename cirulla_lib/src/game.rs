@@ -5,12 +5,12 @@ use std::fmt::Debug;
 
 #[derive(Debug)]
 pub struct Game {
-    deck: Vec<Card>,
-    players: Vec<Player>,
-    table: Vec<Card>,
+    pub deck: Vec<Card>,
+    pub players: Vec<Player>,
+    pub table: Vec<Card>,
     game_started: bool,
     hand_started: bool,
-    current_player_index: usize,
+    pub current_player_index: usize,
     last_player_caught: usize,
 }
 
@@ -33,6 +33,10 @@ impl Game {
             current_player_index: 0,
             last_player_caught: 1000,
         }
+    }
+
+    pub fn current_player(&self) -> &Player {
+        self.players.get(self.current_player_index).unwrap()
     }
 
     pub fn add_player(&mut self, name: &str) -> Result<usize, &str> {
@@ -102,7 +106,7 @@ impl Game {
         Ok(())
     }
 
-    pub fn end_hand(&mut self) -> Result<(), &str> {
+    pub fn end_hand(&mut self) -> Result<bool, &str> {
         if !self.hand_started {
             return Err("Hand not yet started");
         }
@@ -112,13 +116,18 @@ impl Game {
             last_player.catch(*card);
         }
 
+        let mut someone_wins = false;
+
         for player in self.players.iter_mut() {
             player.end_hand(&mut self.deck);
+            if player.points >= 51 {
+                someone_wins = true;
+            }
         }
 
         self.hand_started = false;
 
-        Ok(())
+        Ok(someone_wins)
     }
 
     pub fn start_round(&mut self) -> Result<(), &str> {
@@ -143,6 +152,7 @@ impl Game {
         match player.find_card_in_hand(card) {
             None => Err("Card not found"),
             Some(card) => {
+                println!("{} played {}", player.name, card);
                 // Scopa d'assi
                 if !ace_on_table && card.value() == 1 {
                     while let Some(c) = self.table.pop() {
@@ -157,7 +167,7 @@ impl Game {
                 }
 
                 // Scopa o ciapachinze
-                for k in self.table.len()..0 {
+                for k in (0..self.table.len() + 1).rev() {
                     println!("Controllo {} carte...", k);
                     let working_cards = self.table.iter().map(|c| c.clone());
                     for permut in working_cards.permutations(k) {
@@ -179,12 +189,14 @@ impl Game {
                     }
                 }
 
+                self.table.push(card);
+
                 Ok(())
             }
         }
     }
 
-    pub fn player_end_play(&mut self) -> Result<NextAction, &str> {
+    pub fn next_round_action(&mut self) -> Result<NextAction, &str> {
         self.current_player_index += 1;
         if self.current_player_index >= self.players.len() {
             self.current_player_index = 0;
@@ -206,7 +218,6 @@ impl Game {
 
         Ok(NextAction::NextPlayer)
     }
-
 }
 
 pub enum NextAction {

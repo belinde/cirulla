@@ -1,11 +1,53 @@
-use cirulla_lib::Game;
+use clap::{Parser, ValueEnum};
+
+mod local;
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+enum Mode {
+    /// Launch a server to which people can connect to play
+    Server,
+    /// Connect to a server to play
+    Client,
+    /// Play locally on this computer
+    Local,
+}
+
+#[derive(Parser, Debug)]
+#[command(version, about="Play Cirulla on your computer", long_about = None)]
+struct Args {
+    /// What mode to run the program in
+    #[arg(value_enum, default_value_t = Mode::Local)]
+    mode: Mode,
+
+    /// The address to listen on (Server mode) or connect to (Client mode)
+    #[arg(short, long, default_value = "localhost")]
+    address: String,
+
+    /// The port to listen on (Server mode) or connect to (Client mode)
+    #[arg(short, long, value_parser = clap::value_parser!(u16).range(1..), default_value_t = 15157)]
+    port: u16,
+
+    /// The name of a player (from 2 to 4 times)
+    #[arg(short, long)]
+    name: Vec<String>,
+}
 
 fn main() {
-    let mut game = Game::new();
-    let alice = game.add_player("Alice").unwrap();
-    let bob = game.add_player("Bob").unwrap();
-    println!("Alice: player {}\nBob: player {}", alice, bob);
+    let args = Args::parse();
 
-    println!("Cirulla! {:?}\n", game);
-
+    match args.mode {
+        Mode::Server => {
+            println!("Starting server on {}:{}", args.address, args.port);
+            panic!("Server mode is not implemented yet");
+        }
+        Mode::Client => {
+            println!("Connecting to {}:{}", args.address, args.port);
+            panic!("Client mode is not implemented yet");
+        }
+        Mode::Local => {
+            println!("Playing locally");
+            let mut game = local::LocalGame::new(&args.name);
+            game.start();
+        }
+    }
 }

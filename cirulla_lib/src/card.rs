@@ -30,10 +30,10 @@ impl Card {
 
     pub fn suit(&self) -> String {
         match self {
-            Self::Heart(_) => "♥".to_string(),
-            Self::Diamond(_) => "♦".to_string(),
-            Self::Club(_) => "♣".to_string(),
-            Self::Spade(_) => "♠".to_string(),
+            Self::Heart(_) => "h".to_string(),
+            Self::Diamond(_) => "d".to_string(),
+            Self::Club(_) => "c".to_string(),
+            Self::Spade(_) => "s".to_string(),
         }
     }
 }
