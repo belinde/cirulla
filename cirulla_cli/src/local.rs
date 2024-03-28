@@ -47,6 +47,6 @@ impl LocalGame {
                 }
             }
         }
-        self.ui.reset();
+        self.ui.draw_winner(&self.game).unwrap();
     }
 }

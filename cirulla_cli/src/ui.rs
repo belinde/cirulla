@@ -33,6 +33,57 @@ impl UI {
         self.stdout.flush().unwrap();
     }
 
+    pub fn draw_winner(&mut self, game: &Game) -> Result<(), Error> {
+        self.clear()?;
+        self.apply()?;
+
+        let mut points: Vec<(String, u8)> = game
+            .players
+            .iter()
+            .map(|p| (p.name.to_owned(), p.points))
+            .collect();
+        points.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+
+        self.stdout
+            .queue(MoveTo(0, 0))?
+            .queue(Print("┌────────────────────────────┐".to_string()))?;
+
+        let last_line: u16 = game.players.len() as u16 + 5;
+        for i in 1..last_line {
+            self.stdout
+                .queue(MoveTo(0, i))?
+                .queue(Print("│                            │".to_string()))?;
+        }
+        self.stdout
+            .queue(MoveTo(0, last_line))?
+            .queue(Print("└────────────────────────────┘".to_string()))?
+            .queue(MoveTo(1, 1))?
+            .queue(Print("CLASSIFICA FINALE"))?
+            .queue(MoveTo(1, last_line - 1))?
+            .queue(Print("Premi Q per uscire".to_string()))?;
+
+        for (i, (name, points)) in points.iter().enumerate() {
+            self.stdout
+                .queue(MoveTo(2, i as u16 + 3))?
+                .queue(Print(format!("{}° {} - {}", i + 1, name, points)))?;
+        }
+
+        self.apply()?;
+
+        loop {
+            match read().unwrap() {
+                Event::Key(evt) => match evt.code {
+                    KeyCode::Char('q') | KeyCode::Char('c') => {
+                        self.reset();
+                        process::exit(0);
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+    }
+
     pub fn draw_table(&mut self, game: &Game) {
         self.clear().unwrap();
 
