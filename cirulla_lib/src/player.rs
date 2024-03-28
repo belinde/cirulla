@@ -1,6 +1,11 @@
+use crate::card::Card;
 use std::fmt::{Debug, Display};
 
-use crate::card::Card;
+#[derive(Debug)]
+pub enum Effect {
+    Knocked(u8),
+    DeckHandlerBroom(u8),
+}
 
 #[derive(Debug)]
 pub struct Player {
@@ -10,6 +15,7 @@ pub struct Player {
     pub brooms: u8,
     pub points: u8,
     pub hand_visible: bool,
+    pub effect: Vec<Effect>,
 }
 
 impl Player {
@@ -21,6 +27,7 @@ impl Player {
             brooms: 0,
             points: 0,
             hand_visible: false,
+            effect: Vec::new(),
         }
     }
 
@@ -32,7 +39,7 @@ impl Player {
         self.brooms = 0;
     }
 
-    pub fn end_hand(&mut self, deck: &mut Vec<Card>) -> Option<u8>{
+    pub fn end_hand(&mut self, deck: &mut Vec<Card>) -> Option<u8> {
         let mut total_points = 0;
         // TODO: conteggio punti
         total_points += self.brooms;
@@ -60,10 +67,12 @@ impl Player {
             tot_points += value;
         }
         if all_equal {
+            self.effect.push(Effect::Knocked(10));
             self.increment_brooms(10);
             self.hand_visible = true;
         }
         if tot_points <= 9 {
+            self.effect.push(Effect::Knocked(3));
             self.increment_brooms(3);
             self.hand_visible = true;
         }

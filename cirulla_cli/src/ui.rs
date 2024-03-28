@@ -1,4 +1,4 @@
-use cirulla_lib::{Card, Game, Player};
+use cirulla_lib::{Card, Effect, Game, Player};
 use crossterm::{
     cursor::{Hide, MoveTo, Show},
     event::{read, Event, KeyCode},
@@ -11,7 +11,7 @@ use std::{
     process,
 };
 
-const PLAYER_HEIGHT: u16 = 9;
+const PLAYER_HEIGHT: u16 = 10;
 
 pub struct UI {
     stdout: Stdout,
@@ -87,7 +87,8 @@ impl UI {
     pub fn draw_table(&mut self, game: &Game) {
         self.clear().unwrap();
 
-        self.table(&game.table, game.deck.len()).unwrap();
+        self.table(&game.table, game.deck.len(), game.win_at)
+            .unwrap();
 
         for (i, player) in game.players.iter().enumerate() {
             self.player(player, i as u16, i == game.current_player_index)
@@ -103,13 +104,13 @@ impl UI {
         loop {
             self.stdout
                 .queue(MoveTo(
-                    11,
-                    game.current_player_index as u16 * PLAYER_HEIGHT + 6,
+                    16,
+                    game.current_player_index as u16 * PLAYER_HEIGHT + 7,
                 ))?
                 .queue(Print("               ".to_string()))?
                 .queue(MoveTo(
-                    (11 + pointer * 6) as u16,
-                    game.current_player_index as u16 * PLAYER_HEIGHT + 6,
+                    (16 + pointer * 6) as u16,
+                    game.current_player_index as u16 * PLAYER_HEIGHT + 7,
                 ))?
                 .queue(Print("^^^".to_string()))?
                 .flush()?;
@@ -155,15 +156,48 @@ impl UI {
         self.stdout.flush()
     }
 
-    fn table(&mut self, table: &Vec<Card>, deck: usize) -> Result<(), Error> {
+    fn draw_box(&mut self, pos: (u16, u16), size: (u16, u16)) -> Result<(), Error> {
+        self.stdout
+            .queue(MoveTo(pos.0, pos.1))?
+            .queue(Print("┌".to_string()))?
+            .queue(MoveTo(pos.0 + size.0, pos.1))?
+            .queue(Print("┐".to_string()))?
+            .queue(MoveTo(pos.0, pos.1 + size.1))?
+            .queue(Print("└".to_string()))?
+            .queue(MoveTo(pos.0 + size.0, pos.1 + size.1))?
+            .queue(Print("┘".to_string()))?;
+
+        for i in 1..size.0 {
+            self.stdout
+                .queue(MoveTo(pos.0 + i, pos.1))?
+                .queue(Print("─".to_string()))?
+                .queue(MoveTo(pos.0 + i, pos.1 + size.1))?
+                .queue(Print("─".to_string()))?;
+        }
+
+        for i in 1..size.1 {
+            self.stdout
+                .queue(MoveTo(pos.0, pos.1 + i))?
+                .queue(Print("│".to_string()))?
+                .queue(MoveTo(pos.0 + size.0, pos.1 + i))?
+                .queue(Print("│".to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    fn table(&mut self, table: &Vec<Card>, deck: usize, win_at: u8) -> Result<(), Error> {
+        self.draw_box((36, 0), (30, 17))?;
         self.stdout
             .queue(MoveTo(40, 1))?
-            .queue(Print(format!("Carte nel mazzo: {}", deck)))?;
+            .queue(Print(format!("Carte nel mazzo: {}", deck)))?
+            .queue(MoveTo(40, 2))?
+            .queue(Print(format!("Si vince ai {} punti", win_at)))?;
 
         table.iter().enumerate().for_each(|(i, card)| {
             self.card(
                 card,
-                (40 + (i % 4) as u16 * 6, (3 + (i / 4) * 4) as u16),
+                (40 + (i % 4) as u16 * 6, (5 + (i / 4) * 4) as u16),
                 true,
             )
             .unwrap();
@@ -173,39 +207,33 @@ impl UI {
     }
 
     fn player(&mut self, player: &Player, ord: u16, active: bool) -> Result<(), Error> {
+        self.draw_box((0, ord * PLAYER_HEIGHT), (33, PLAYER_HEIGHT-1))?;
         self.stdout
-            .queue(MoveTo(0, ord * PLAYER_HEIGHT))?
-            .queue(Print("┌────────────────────────────┐".to_string()))?
-            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 1))?
-            .queue(Print("│                            │".to_string()))?
-            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 2))?
-            .queue(Print("│                            │".to_string()))?
-            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 3))?
-            .queue(Print("│                            │".to_string()))?
-            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 4))?
-            .queue(Print("│                            │".to_string()))?
-            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 5))?
-            .queue(Print("│                            │".to_string()))?
-            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 6))?
-            .queue(Print("│                            │".to_string()))?
-            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 7))?
-            .queue(Print("│                            │".to_string()))?
-            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 8))?
-            .queue(Print("└────────────────────────────┘".to_string()))?
             .queue(MoveTo(1, ord * PLAYER_HEIGHT + 1))?
             .queue(Print(format!("{} ({} punti)", player.name, player.points)))?;
 
         player.hand.iter().enumerate().for_each(|(i, card)| {
             self.card(
                 card,
-                (10 + i as u16 * 6, ord * PLAYER_HEIGHT + 2),
+                (15 + i as u16 * 6, ord * PLAYER_HEIGHT + 3),
                 active || player.hand_visible,
             )
             .unwrap();
         });
 
+        player.effect.iter().enumerate().for_each(|(pos, effect)| {
+            self.stdout
+                .queue(MoveTo(1, ord * PLAYER_HEIGHT + 3 + pos as u16))
+                .unwrap()
+                .queue(Print(match &effect {
+                    Effect::DeckHandlerBroom(value) => format!("Banco a {}", value),
+                    Effect::Knocked(value) => format!("Bussa da {}", value),
+                }))
+                .unwrap();
+        });
+
         self.stdout
-            .queue(MoveTo(1, ord * PLAYER_HEIGHT + 7))?
+            .queue(MoveTo(1, ord * PLAYER_HEIGHT + 8))?
             .queue(Print(format!(
                 "Carte: {}     Scope: {}",
                 player.catched.len(),

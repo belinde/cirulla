@@ -11,7 +11,7 @@ pub fn catching_logic(
     let ace_on_table = table.iter().any(|c| c.value() == 1);
 
     // Scopa d'assi
-    if !ace_on_table && card.value() == 1 {
+    if !ace_on_table && card.value() == 1 && table.len() != 0 {
         while let Some(c) = table.pop() {
             player.catch(c);
         }
@@ -247,6 +247,22 @@ mod tests {
             false
         );
         assert_eq!(table.len(), 4);
+        assert_eq!(player.catched.len(), 0);
+        assert_eq!(player.brooms, 0);
+    }
+
+    #[test]
+    fn ace_on_empty_table() {
+        let mut table = Vec::new();
+        let mut player = Player::new("Test");
+        let card = Card::Heart(1);
+        let can_broom = true;
+
+        assert_eq!(
+            catching_logic(&mut table, &mut player, card, can_broom),
+            false
+        );
+        assert_eq!(table.len(), 1);
         assert_eq!(player.catched.len(), 0);
         assert_eq!(player.brooms, 0);
     }

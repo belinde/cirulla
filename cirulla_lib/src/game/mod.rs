@@ -1,6 +1,6 @@
 mod catching_logic;
 
-use crate::{card::Card, player::Player};
+use crate::{card::Card, player::{Effect, Player}};
 use catching_logic::catching_logic;
 use rand::seq::SliceRandom;
 use std::fmt::Debug;
@@ -14,7 +14,7 @@ pub struct Game {
     hand_started: bool,
     pub current_player_index: usize,
     last_player_caught: usize,
-    win_at: u8,
+    pub win_at: u8,
 }
 
 impl Game {
@@ -104,6 +104,7 @@ impl Game {
                 self.players[0].catch(c);
             }
             self.players[0].increment_brooms(total_points / 15);
+            self.players[0].effect.push(Effect::DeckHandlerBroom(total_points))
         }
 
         self.hand_started = true;
@@ -165,6 +166,8 @@ impl Game {
     }
 
     pub fn next_round_action(&mut self) -> Result<NextAction, &str> {
+        self.players.get_mut(self.current_player_index).unwrap().effect.clear();
+
         self.current_player_index += 1;
         if self.current_player_index >= self.players.len() {
             self.current_player_index = 0;
