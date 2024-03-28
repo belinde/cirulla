@@ -11,6 +11,8 @@ use std::{
     process,
 };
 
+const PLAYER_HEIGHT: u16 = 9;
+
 pub struct UI {
     stdout: Stdout,
 }
@@ -40,11 +42,11 @@ impl UI {
         self.stdout.queue(Hide)?;
         loop {
             self.stdout
-                .queue(MoveTo(11, game.current_player_index as u16 * 10 + 6))?
+                .queue(MoveTo(11, game.current_player_index as u16 * PLAYER_HEIGHT + 6))?
                 .queue(Print("               ".to_string()))?
                 .queue(MoveTo(
                     (11 + pointer * 6) as u16,
-                    game.current_player_index as u16 * 10 + 6,
+                    game.current_player_index as u16 * PLAYER_HEIGHT + 6,
                 ))?
                 .queue(Print("^^^".to_string()))?
                 .flush()?;
@@ -66,9 +68,9 @@ impl UI {
                         }
                     }
                     KeyCode::Char('q') | KeyCode::Char('c') => {
-                        disable_raw_mode().unwrap();
-                        self.clear().unwrap();
-                        self.stdout.flush()?;
+                        disable_raw_mode()?;
+                        self.clear()?;
+                        self.stdout.queue(Show)?.flush()?;
                         process::exit(0);
                     }
                     KeyCode::Char(' ') | KeyCode::Enter => {
@@ -114,42 +116,39 @@ impl UI {
 
     fn player(&mut self, player: &Player, ord: u16, active: bool) -> Result<(), Error> {
         self.stdout
-            .queue(MoveTo(0, ord * 10))?
-            .queue(Print("┌─────────────────────────────┐".to_string()))?
-            .queue(MoveTo(0, ord * 10 + 1))?
-            .queue(Print("│                             │".to_string()))?
-            .queue(MoveTo(0, ord * 10 + 2))?
-            .queue(Print("│                             │".to_string()))?
-            .queue(MoveTo(0, ord * 10 + 3))?
-            .queue(Print("│                             │".to_string()))?
-            .queue(MoveTo(0, ord * 10 + 4))?
-            .queue(Print("│                             │".to_string()))?
-            .queue(MoveTo(0, ord * 10 + 5))?
-            .queue(Print("│                             │".to_string()))?
-            .queue(MoveTo(0, ord * 10 + 6))?
-            .queue(Print("│                             │".to_string()))?
-            .queue(MoveTo(0, ord * 10 + 7))?
-            .queue(Print("│                             │".to_string()))?
-            .queue(MoveTo(0, ord * 10 + 8))?
-            .queue(Print("└─────────────────────────────┘".to_string()))?
-            .queue(MoveTo(1, ord * 10 + 1))?
+            .queue(MoveTo(0, ord * PLAYER_HEIGHT))?
+            .queue(Print("┌────────────────────────────┐".to_string()))?
+            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 1))?
+            .queue(Print("│                            │".to_string()))?
+            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 2))?
+            .queue(Print("│                            │".to_string()))?
+            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 3))?
+            .queue(Print("│                            │".to_string()))?
+            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 4))?
+            .queue(Print("│                            │".to_string()))?
+            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 5))?
+            .queue(Print("│                            │".to_string()))?
+            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 6))?
+            .queue(Print("│                            │".to_string()))?
+            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 7))?
+            .queue(Print("│                            │".to_string()))?
+            .queue(MoveTo(0, ord * PLAYER_HEIGHT + 8))?
+            .queue(Print("└────────────────────────────┘".to_string()))?
+            .queue(MoveTo(1, ord * PLAYER_HEIGHT + 1))?
             .queue(Print(format!("{} ({} punti)", player.name, player.points)))?;
 
         player.hand.iter().enumerate().for_each(|(i, card)| {
             self.card(
                 card,
-                (10 + i as u16 * 6, ord * 10 + 2),
+                (10 + i as u16 * 6, ord * PLAYER_HEIGHT + 2),
                 active || player.hand_visible,
             )
             .unwrap();
         });
 
         self.stdout
-            .queue(MoveTo(1, ord * 10 + 6))?
-            .queue(Print(format!("Carte: {}", player.catched.len())))?
-            .queue(MoveTo(1, ord * 10 + 7))?
-            .queue(Print(format!("Scope: {}", player.brooms)))?
-            .queue(MoveTo(0, ord * 10 + 10))?;
+            .queue(MoveTo(1, ord * PLAYER_HEIGHT + 7))?
+            .queue(Print(format!("Carte: {}     Scope: {}", player.catched.len(), player.brooms)))?;
 
         Ok(())
     }
