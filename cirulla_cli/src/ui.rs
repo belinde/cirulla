@@ -6,7 +6,10 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
     QueueableCommand,
 };
-use std::{io::{stdout, Error, Stdout, Write}, process};
+use std::{
+    io::{stdout, Error, Stdout, Write},
+    process,
+};
 
 pub struct UI {
     stdout: Stdout,

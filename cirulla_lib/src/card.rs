@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display};
+
 #[derive(Clone, Copy)]
 #[derive(PartialEq)]
 pub enum Card {

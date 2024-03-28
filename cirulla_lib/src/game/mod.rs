@@ -1,5 +1,7 @@
+mod catching_logic;
+
 use crate::{card::Card, player::Player};
-use itertools::Itertools;
+use catching_logic::catching_logic;
 use rand::seq::SliceRandom;
 use std::fmt::Debug;
 
@@ -144,53 +146,16 @@ impl Game {
     }
 
     pub fn player_play(&mut self, card: &str) -> Result<(), &str> {
-        let can_broom = !self.deck.is_empty();
-        let ace_on_table = self.table.iter().any(|c| c.value() == 1);
-
         let player = self.players.get_mut(self.current_player_index).unwrap();
+        let can_broom = !self.deck.is_empty();
 
-        match player.find_card_in_hand(card) {
+        match player.give_card_from_hand(card) {
             None => Err("Card not found"),
             Some(card) => {
-                println!("{} played {}", player.name, card);
-                // Scopa d'assi
-                if !ace_on_table && card.value() == 1 {
-                    while let Some(c) = self.table.pop() {
-                        player.catch(c);
-                    }
-                    player.catch(card);
-                    if can_broom {
-                        player.increment_brooms(1);
-                    }
+                let caught = catching_logic(&mut self.table, player, card, can_broom);
+                if caught {
                     self.last_player_caught = self.current_player_index;
-                    return Ok(());
                 }
-
-                // Scopa o ciapachinze
-                for k in (0..self.table.len() + 1).rev() {
-                    println!("Controllo {} carte...", k);
-                    let working_cards = self.table.iter().map(|c| c.clone());
-                    for permut in working_cards.permutations(k) {
-                        let mut value_total = 0;
-                        permut.iter().for_each(|c| value_total += c.value());
-                        if value_total == card.value() || value_total + card.value() == 15 {
-                            for c in permut {
-                                if let Some(key) = self.table.iter().position(|x| *x == c) {
-                                    player.catch(self.table.remove(key));
-                                }
-                            }
-                            player.catch(card);
-                            if can_broom && self.table.is_empty() {
-                                player.increment_brooms(1);
-                            }
-                            self.last_player_caught = self.current_player_index;
-                            return Ok(());
-                        }
-                    }
-                }
-
-                self.table.push(card);
-
                 Ok(())
             }
         }

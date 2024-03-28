@@ -77,7 +77,7 @@ impl Player {
         self.brooms += value;
     }
 
-    pub fn find_card_in_hand(&mut self, card: &str) -> Option<Card> {
+    pub fn give_card_from_hand(&mut self, card: &str) -> Option<Card> {
         for (i, c) in self.hand.iter().enumerate() {
             if c.to_string() == card {
                 return Some(self.hand.remove(i));
