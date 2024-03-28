@@ -1,7 +1,7 @@
-use clap::{Parser, ValueEnum};
-
 mod local;
 mod ui;
+
+use clap::{Parser, ValueEnum};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 enum Mode {
@@ -31,6 +31,10 @@ struct Args {
     /// The name of a player (from 2 to 4 times)
     #[arg(short, long)]
     name: Vec<String>,
+
+    /// The number of points to play to
+    #[arg(short, long, default_value_t = 51)]
+    win_at: u8,
 }
 
 fn main() {
@@ -47,7 +51,7 @@ fn main() {
         }
         Mode::Local => {
             println!("Playing locally");
-            let mut game = local::LocalGame::new(&args.name);
+            let mut game = local::LocalGame::new(&args.name, args.win_at);
             game.start();
         }
     }

@@ -14,10 +14,11 @@ pub struct Game {
     hand_started: bool,
     pub current_player_index: usize,
     last_player_caught: usize,
+    win_at: u8,
 }
 
 impl Game {
-    pub fn new() -> Game {
+    pub fn new(win_at: u8) -> Game {
         let mut deck = Vec::new();
         for i in 1..11 {
             deck.push(Card::Heart(i));
@@ -34,6 +35,7 @@ impl Game {
             hand_started: false,
             current_player_index: 0,
             last_player_caught: 1000,
+            win_at,
         }
     }
 
@@ -82,6 +84,7 @@ impl Game {
             return Err("Game not yet started");
         }
         if self.deck.len() != 40 {
+            println!("Deck not ready: {:?}", self);
             return Err("Deck not ready");
         }
         self.deck.shuffle(&mut rand::thread_rng());
@@ -97,8 +100,8 @@ impl Game {
             self.table.push(card);
         }
         if total_points == 15 || total_points == 30 {
-            for card in self.table.iter() {
-                self.players[0].catch(*card);
+            while let Some(c) = self.table.pop() {
+                self.players[0].catch(c);
             }
             self.players[0].increment_brooms(total_points / 15);
         }
@@ -122,7 +125,7 @@ impl Game {
 
         for player in self.players.iter_mut() {
             player.end_hand(&mut self.deck);
-            if player.points >= 51 {
+            if player.points >= self.win_at {
                 someone_wins = true;
             }
         }
@@ -175,6 +178,10 @@ impl Game {
             .is_empty()
         {
             return if self.deck.is_empty() {
+                let last_catcher = self.players.get_mut(self.last_player_caught).unwrap();
+                while let Some(card) = self.table.pop() {
+                    last_catcher.catched.push(card);
+                }
                 Ok(NextAction::EndHand)
             } else {
                 Ok(NextAction::NextRound)

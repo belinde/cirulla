@@ -6,8 +6,8 @@ pub struct LocalGame {
 }
 
 impl LocalGame {
-    pub fn new(players: &Vec<String>) -> LocalGame {
-        let mut game = Game::new();
+    pub fn new(players: &Vec<String>, win_at: u8) -> LocalGame {
+        let mut game = Game::new(win_at);
         players.iter().for_each(|name| {
             game.add_player(name).unwrap();
         });
@@ -16,7 +16,6 @@ impl LocalGame {
             ui: crate::ui::UI::new(),
         }
     }
-
 
     pub fn start(&mut self) {
         self.game.start_game().unwrap();
@@ -48,5 +47,6 @@ impl LocalGame {
                 }
             }
         }
+        self.ui.reset();
     }
 }

@@ -19,7 +19,18 @@ pub struct UI {
 
 impl UI {
     pub fn new() -> UI {
-        UI { stdout: stdout() }
+        let mut stdout = stdout();
+        enable_raw_mode().unwrap();
+        stdout.queue(Hide).unwrap().flush().unwrap();
+
+        UI { stdout }
+    }
+
+    pub fn reset(&mut self) {
+        disable_raw_mode().unwrap();
+        self.stdout.queue(Show).unwrap();
+        self.clear().unwrap();
+        self.stdout.flush().unwrap();
     }
 
     pub fn draw_table(&mut self, game: &Game) {
@@ -38,11 +49,12 @@ impl UI {
     pub fn ask_for_card(&mut self, game: &Game) -> Result<String, Error> {
         let player = game.current_player();
         let mut pointer: usize = 0;
-        enable_raw_mode().unwrap();
-        self.stdout.queue(Hide)?;
         loop {
             self.stdout
-                .queue(MoveTo(11, game.current_player_index as u16 * PLAYER_HEIGHT + 6))?
+                .queue(MoveTo(
+                    11,
+                    game.current_player_index as u16 * PLAYER_HEIGHT + 6,
+                ))?
                 .queue(Print("               ".to_string()))?
                 .queue(MoveTo(
                     (11 + pointer * 6) as u16,
@@ -68,15 +80,10 @@ impl UI {
                         }
                     }
                     KeyCode::Char('q') | KeyCode::Char('c') => {
-                        disable_raw_mode()?;
-                        self.clear()?;
-                        self.stdout.queue(Show)?.flush()?;
+                        self.reset();
                         process::exit(0);
                     }
                     KeyCode::Char(' ') | KeyCode::Enter => {
-                        disable_raw_mode().unwrap();
-                        self.stdout.queue(Show)?.flush()?;
-
                         return Ok(player.hand[pointer].to_string());
                     }
                     _ => {}
@@ -88,8 +95,8 @@ impl UI {
 
     fn clear(&mut self) -> Result<(), Error> {
         self.stdout
-            .queue(MoveTo(0, 0))?
-            .queue(Clear(ClearType::All))?;
+            .queue(Clear(ClearType::All))?
+            .queue(MoveTo(0, 0))?;
         Ok(())
     }
 
@@ -148,7 +155,11 @@ impl UI {
 
         self.stdout
             .queue(MoveTo(1, ord * PLAYER_HEIGHT + 7))?
-            .queue(Print(format!("Carte: {}     Scope: {}", player.catched.len(), player.brooms)))?;
+            .queue(Print(format!(
+                "Carte: {}     Scope: {}",
+                player.catched.len(),
+                player.brooms
+            )))?;
 
         Ok(())
     }
