@@ -4,9 +4,7 @@ use crate::{
     player::{Effect, Player},
 };
 use rand::seq::SliceRandom;
-use std::fmt::Debug;
 
-#[derive(Debug)]
 pub struct Game {
     pub deck: Vec<Card>,
     pub players: Vec<Player>,
@@ -85,7 +83,6 @@ impl Game {
             return Err("Game not yet started");
         }
         if self.deck.len() != 40 {
-            println!("Deck not ready: {:?}", self);
             return Err("Deck not ready");
         }
 

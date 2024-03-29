@@ -228,8 +228,6 @@ mod tests {
             catching_logic(&mut table, &mut player, card, can_broom),
             true
         );
-        println!("Table: {:?}", table);
-        println!("Player: {:?}", player);
         assert_eq!(table.len(), 2);
         assert_eq!(player.catched.len(), 3);
         assert_eq!(player.brooms, 0);

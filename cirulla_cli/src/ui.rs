@@ -18,6 +18,12 @@ pub struct UI {
     stdout: Stdout,
 }
 
+impl Drop for UI {
+    fn drop(&mut self) {
+        self.reset(false);
+    }
+}
+
 impl UI {
     pub fn new() -> UI {
         let mut stdout = stdout();
@@ -27,10 +33,12 @@ impl UI {
         UI { stdout }
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, clear: bool) {
         disable_raw_mode().unwrap();
         self.stdout.queue(Show).unwrap();
-        self.clear().unwrap();
+        if clear {
+            self.clear().unwrap();
+        }
         self.stdout.flush().unwrap();
     }
 
@@ -45,19 +53,9 @@ impl UI {
             .collect();
         points.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
-        self.stdout
-            .queue(MoveTo(0, 0))?
-            .queue(Print("┌────────────────────────────┐".to_string()))?;
-
         let last_line: u16 = game.players.len() as u16 + 5;
-        for i in 1..last_line {
-            self.stdout
-                .queue(MoveTo(0, i))?
-                .queue(Print("│                            │".to_string()))?;
-        }
+        self.draw_box((0, 0), (last_line, 28), true)?;
         self.stdout
-            .queue(MoveTo(0, last_line))?
-            .queue(Print("└────────────────────────────┘".to_string()))?
             .queue(MoveTo(1, 1))?
             .queue(Print("CLASSIFICA FINALE"))?
             .queue(MoveTo(1, last_line - 1))?
@@ -75,7 +73,7 @@ impl UI {
             match read().unwrap() {
                 Event::Key(evt) => match evt.code {
                     KeyCode::Char('q') | KeyCode::Char('c') => {
-                        self.reset();
+                        self.reset(true);
                         process::exit(0);
                     }
                     _ => {}
@@ -133,7 +131,7 @@ impl UI {
                         }
                     }
                     KeyCode::Char('q') | KeyCode::Char('c') => {
-                        self.reset();
+                        self.reset(true);
                         process::exit(0);
                     }
                     KeyCode::Char(' ') | KeyCode::Enter => {
@@ -261,37 +259,28 @@ impl UI {
     }
 
     fn card(&mut self, card: &Card, pos: (u16, u16), show: bool) -> Result<(), Error> {
-        let suit = match card {
-            Card::Heart(_) => "♥",
-            Card::Diamond(_) => "♦",
-            Card::Club(_) => "♣",
-            Card::Spade(_) => "♠",
-        };
+        self.draw_box(pos, (4, 3), false)?;
 
         if show {
-            self.stdout.queue(SetForegroundColor(match card {
-                Card::Heart(_) | Card::Diamond(_) => Color::Red,
-                _ => Color::Blue,
-            }))?;
+            let suit = match card {
+                Card::Heart(_) => "♥",
+                Card::Diamond(_) => "♦",
+                Card::Club(_) => "♣",
+                Card::Spade(_) => "♠",
+            };
+
+            self.stdout
+                .queue(SetForegroundColor(match card {
+                    Card::Heart(_) | Card::Diamond(_) => Color::Red,
+                    _ => Color::Blue,
+                }))?
+                .queue(MoveTo(pos.0 + 2, pos.1 + 1))?
+                .queue(Print(suit))?
+                .queue(MoveTo(pos.0 + 2, pos.1 + 2))?
+                .queue(Print(card.name()))?
+                .queue(SetForegroundColor(Color::Reset))?;
         }
 
-        self.stdout
-            .queue(MoveTo(pos.0, pos.1))?
-            .queue(Print("┌───┐".to_string()))?
-            .queue(MoveTo(pos.0, pos.1 + 1))?
-            .queue(Print(format!("│ {} │", if show { suit } else { " " })))?
-            .queue(MoveTo(pos.0, pos.1 + 2))?
-            .queue(Print(format!(
-                "│ {} │",
-                if show { card.name() } else { " ".to_string() }
-            )))?
-            .queue(MoveTo(pos.0, pos.1 + 3))?
-            .queue(Print("└───┘".to_string()))?;
-        
-        if show {
-            self.stdout.queue(SetForegroundColor(Color::Reset))?;
-        }
-        
         Ok(())
     }
 }

@@ -1,13 +1,11 @@
 use crate::card::Card;
-use std::fmt::{Debug, Display};
+use std::fmt::Display;
 
-#[derive(Debug)]
 pub enum Effect {
     Knocked(u8),
     DeckHandlerBroom(u8),
 }
 
-#[derive(Debug)]
 pub struct Player {
     pub name: String,
     pub hand: Vec<Card>,

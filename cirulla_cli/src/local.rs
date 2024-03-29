@@ -1,8 +1,10 @@
 use cirulla_lib::{Game, NextAction};
 
+use crate::ui::UI;
+
 pub struct LocalGame {
     game: Game,
-    ui: crate::ui::UI,
+    ui: UI,
 }
 
 impl LocalGame {
@@ -13,12 +15,18 @@ impl LocalGame {
         });
         LocalGame {
             game,
-            ui: crate::ui::UI::new(),
+            ui: UI::new(),
         }
     }
 
     pub fn start(&mut self) {
-        self.game.start_game().unwrap();
+        match self.game.start_game() {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("Error starting game: {}", e);
+                return;
+            }
+        };
         'game: loop {
             self.game.start_hand().unwrap();
             'hand: loop {
