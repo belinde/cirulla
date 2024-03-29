@@ -1,7 +1,8 @@
-mod catching_logic;
-
-use crate::{card::Card, player::{Effect, Player}};
-use catching_logic::catching_logic;
+use crate::{
+    card::Card,
+    catching_logic::catching_logic,
+    player::{Effect, Player},
+};
 use rand::seq::SliceRandom;
 use std::fmt::Debug;
 
@@ -87,24 +88,40 @@ impl Game {
             println!("Deck not ready: {:?}", self);
             return Err("Deck not ready");
         }
-        self.deck.shuffle(&mut rand::thread_rng());
 
         for player in self.players.iter_mut() {
             player.start_hand();
         }
 
-        let mut total_points = 0;
-        for _ in 0..4 {
-            let card = self.deck.pop().unwrap();
-            total_points += card.value();
-            self.table.push(card);
+        loop {
+            self.deck.shuffle(&mut rand::thread_rng());
+            let mut aces = 0;
+            for _ in 0..4 {
+                let card = self.deck.pop().unwrap();
+                if card.value() == 1 {
+                    aces += 1;
+                }
+                self.table.push(card);
+            }
+            if aces > 1 {
+                while let Some(card) = self.table.pop() {
+                    self.deck.push(card);
+                }
+            } else {
+                break;
+            }
         }
+
+        let total_points = self.table.iter().fold(0, |acc, c| acc + c.value());
+
         if total_points == 15 || total_points == 30 {
             while let Some(c) = self.table.pop() {
                 self.players[0].catch(c);
             }
             self.players[0].increment_brooms(total_points / 15);
-            self.players[0].effect.push(Effect::DeckHandlerBroom(total_points))
+            self.players[0]
+                .effect
+                .push(Effect::DeckHandlerBroom(total_points))
         }
 
         self.hand_started = true;
@@ -166,7 +183,11 @@ impl Game {
     }
 
     pub fn next_round_action(&mut self) -> Result<NextAction, &str> {
-        self.players.get_mut(self.current_player_index).unwrap().effect.clear();
+        self.players
+            .get_mut(self.current_player_index)
+            .unwrap()
+            .effect
+            .clear();
 
         self.current_player_index += 1;
         if self.current_player_index >= self.players.len() {

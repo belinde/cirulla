@@ -1,8 +1,9 @@
 use cirulla_lib::{Card, Effect, Game, Player};
+use crossterm::style::Stylize;
 use crossterm::{
     cursor::{Hide, MoveTo, Show},
     event::{read, Event, KeyCode},
-    style::Print,
+    style::{Color, Print, SetForegroundColor},
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
     QueueableCommand,
 };
@@ -11,7 +12,7 @@ use std::{
     process,
 };
 
-const PLAYER_HEIGHT: u16 = 10;
+const PLAYER_HEIGHT: u16 = 11;
 
 pub struct UI {
     stdout: Stdout,
@@ -91,7 +92,7 @@ impl UI {
             .unwrap();
 
         for (i, player) in game.players.iter().enumerate() {
-            self.player(player, i as u16, i == game.current_player_index)
+            self.player(player, i as u16, i == 0, i == game.current_player_index)
                 .unwrap();
         }
 
@@ -107,12 +108,12 @@ impl UI {
                     16,
                     game.current_player_index as u16 * PLAYER_HEIGHT + 7,
                 ))?
-                .queue(Print("               ".to_string()))?
+                .queue(Print("                 "))?
                 .queue(MoveTo(
                     (16 + pointer * 6) as u16,
                     game.current_player_index as u16 * PLAYER_HEIGHT + 7,
                 ))?
-                .queue(Print("^^^".to_string()))?
+                .queue(Print("▀▀▀▀▀"))?
                 .flush()?;
 
             match read()? {
@@ -156,48 +157,50 @@ impl UI {
         self.stdout.flush()
     }
 
-    fn draw_box(&mut self, pos: (u16, u16), size: (u16, u16)) -> Result<(), Error> {
+    fn draw_box(&mut self, pos: (u16, u16), size: (u16, u16), thick: bool) -> Result<(), Error> {
         self.stdout
             .queue(MoveTo(pos.0, pos.1))?
-            .queue(Print("┌".to_string()))?
+            .queue(Print(if thick { "╔" } else { "┌" }))?
             .queue(MoveTo(pos.0 + size.0, pos.1))?
-            .queue(Print("┐".to_string()))?
+            .queue(Print(if thick { "╗" } else { "┐" }))?
             .queue(MoveTo(pos.0, pos.1 + size.1))?
-            .queue(Print("└".to_string()))?
+            .queue(Print(if thick { "╚" } else { "└" }))?
             .queue(MoveTo(pos.0 + size.0, pos.1 + size.1))?
-            .queue(Print("┘".to_string()))?;
+            .queue(Print(if thick { "╝" } else { "┘" }))?;
 
+        let horizontal = if thick { "═" } else { "─" };
         for i in 1..size.0 {
             self.stdout
                 .queue(MoveTo(pos.0 + i, pos.1))?
-                .queue(Print("─".to_string()))?
+                .queue(Print(horizontal))?
                 .queue(MoveTo(pos.0 + i, pos.1 + size.1))?
-                .queue(Print("─".to_string()))?;
+                .queue(Print(horizontal))?;
         }
 
+        let vertical = if thick { "║" } else { "│" };
         for i in 1..size.1 {
             self.stdout
                 .queue(MoveTo(pos.0, pos.1 + i))?
-                .queue(Print("│".to_string()))?
+                .queue(Print(vertical))?
                 .queue(MoveTo(pos.0 + size.0, pos.1 + i))?
-                .queue(Print("│".to_string()))?;
+                .queue(Print(vertical))?;
         }
 
         Ok(())
     }
 
     fn table(&mut self, table: &Vec<Card>, deck: usize, win_at: u8) -> Result<(), Error> {
-        self.draw_box((36, 0), (30, 17))?;
+        self.draw_box((40, 0), (30, 21), false)?;
         self.stdout
-            .queue(MoveTo(40, 1))?
+            .queue(MoveTo(46, 1))?
             .queue(Print(format!("Carte nel mazzo: {}", deck)))?
-            .queue(MoveTo(40, 2))?
+            .queue(MoveTo(46, 20))?
             .queue(Print(format!("Si vince ai {} punti", win_at)))?;
 
         table.iter().enumerate().for_each(|(i, card)| {
             self.card(
                 card,
-                (40 + (i % 4) as u16 * 6, (5 + (i / 4) * 4) as u16),
+                (44 + (i % 4) as u16 * 6, (5 + (i / 4) * 4) as u16),
                 true,
             )
             .unwrap();
@@ -206,16 +209,29 @@ impl UI {
         Ok(())
     }
 
-    fn player(&mut self, player: &Player, ord: u16, active: bool) -> Result<(), Error> {
-        self.draw_box((0, ord * PLAYER_HEIGHT), (33, PLAYER_HEIGHT-1))?;
+    fn player(
+        &mut self,
+        player: &Player,
+        ord: u16,
+        dealer: bool,
+        active: bool,
+    ) -> Result<(), Error> {
+        self.draw_box((0, ord * PLAYER_HEIGHT), (35, PLAYER_HEIGHT - 1), active)?;
+
         self.stdout
-            .queue(MoveTo(1, ord * PLAYER_HEIGHT + 1))?
-            .queue(Print(format!("{} ({} punti)", player.name, player.points)))?;
+            .queue(MoveTo(2, ord * PLAYER_HEIGHT + 1))?
+            .queue(Print(player.name.as_str().bold()))?;
+
+        if dealer {
+            self.stdout
+                .queue(MoveTo(29, ord * PLAYER_HEIGHT + 1))?
+                .queue(Print("MAZZO"))?;
+        }
 
         player.hand.iter().enumerate().for_each(|(i, card)| {
             self.card(
                 card,
-                (15 + i as u16 * 6, ord * PLAYER_HEIGHT + 3),
+                (16 + i as u16 * 6, ord * PLAYER_HEIGHT + 3),
                 active || player.hand_visible,
             )
             .unwrap();
@@ -223,7 +239,7 @@ impl UI {
 
         player.effect.iter().enumerate().for_each(|(pos, effect)| {
             self.stdout
-                .queue(MoveTo(1, ord * PLAYER_HEIGHT + 3 + pos as u16))
+                .queue(MoveTo(2, ord * PLAYER_HEIGHT + 3 + pos as u16))
                 .unwrap()
                 .queue(Print(match &effect {
                     Effect::DeckHandlerBroom(value) => format!("Banco a {}", value),
@@ -233,11 +249,12 @@ impl UI {
         });
 
         self.stdout
-            .queue(MoveTo(1, ord * PLAYER_HEIGHT + 8))?
+            .queue(MoveTo(2, ord * PLAYER_HEIGHT + 9))?
             .queue(Print(format!(
-                "Carte: {}     Scope: {}",
+                "Carte: {}   Scope: {}   Punti: {}",
                 player.catched.len(),
-                player.brooms
+                player.brooms,
+                player.points
             )))?;
 
         Ok(())
@@ -251,6 +268,13 @@ impl UI {
             Card::Spade(_) => "♠",
         };
 
+        if show {
+            self.stdout.queue(SetForegroundColor(match card {
+                Card::Heart(_) | Card::Diamond(_) => Color::Red,
+                _ => Color::Blue,
+            }))?;
+        }
+
         self.stdout
             .queue(MoveTo(pos.0, pos.1))?
             .queue(Print("┌───┐".to_string()))?
@@ -263,7 +287,11 @@ impl UI {
             )))?
             .queue(MoveTo(pos.0, pos.1 + 3))?
             .queue(Print("└───┘".to_string()))?;
-
+        
+        if show {
+            self.stdout.queue(SetForegroundColor(Color::Reset))?;
+        }
+        
         Ok(())
     }
 }
