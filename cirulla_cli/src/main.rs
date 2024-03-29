@@ -1,4 +1,5 @@
 mod local;
+mod server;
 mod ui;
 
 use clap::{Parser, ValueEnum};
@@ -38,12 +39,12 @@ struct Args {
 }
 
 fn main() {
+    env_logger::init();
     let args = Args::parse();
 
     match args.mode {
         Mode::Server => {
-            println!("Starting server on {}:{}", args.address, args.port);
-            panic!("Server mode is not implemented yet");
+            server::start_server(args.address, args.port);
         }
         Mode::Client => {
             println!("Connecting to {}:{}", args.address, args.port);
@@ -51,8 +52,8 @@ fn main() {
         }
         Mode::Local => {
             println!("Playing locally");
-            let mut game = local::LocalGame::new(&args.name, args.win_at);
-            game.start();
+            let mut local_game = local::LocalGame::new(&args.name, args.win_at);
+            local_game.start();
         }
     }
 }
