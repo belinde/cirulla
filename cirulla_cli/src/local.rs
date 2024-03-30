@@ -44,8 +44,10 @@ impl LocalGame {
                             continue 'hand;
                         }
                         NextAction::EndHand => {
-                            let someone_wins = self.game.end_hand().unwrap();
-                            if someone_wins {
+                            let result = self.game.end_hand().unwrap();
+                            self.ui.show_hand_result(&result);
+                            
+                            if result.someone_wins {
                                 break 'game;
                             } else {
                                 continue 'game;

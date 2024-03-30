@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::card::Card;
 use std::fmt::Display;
 
@@ -6,7 +8,45 @@ pub enum Effect {
     DeckHandlerBroom(u8),
 }
 
+#[derive(Debug)]
+pub struct ComparativePoints {
+    pub player_id: String,
+    pub cards: u8,
+    pub primiera: u8,
+    pub diamonds: u8,
+    pub pretty_seven: bool,
+    pub high_ladder: bool,
+    pub low_ladder: u8,
+}
+
+struct PrimieraEvaluation {
+    diamonds: u8,
+    hearts: u8,
+    clubs: u8,
+    spades: u8,
+}
+
+impl PrimieraEvaluation {
+    fn get_max(a: u8, b: u8) -> u8 {
+        if a > b {
+            a
+        } else {
+            b
+        }
+    }
+    pub fn check_card(&mut self, card: &Card) {
+        let p = card.primiera_value();
+        match card {
+            Card::Diamond(_) => self.diamonds = PrimieraEvaluation::get_max(self.diamonds, p),
+            Card::Heart(_) => self.hearts = PrimieraEvaluation::get_max(self.hearts, p),
+            Card::Club(_) => self.clubs = PrimieraEvaluation::get_max(self.clubs, p),
+            Card::Spade(_) => self.spades = PrimieraEvaluation::get_max(self.spades, p),
+        }
+    }
+}
+
 pub struct Player {
+    pub id: String,
     pub name: String,
     pub hand: Vec<Card>,
     pub catched: Vec<Card>,
@@ -19,6 +59,7 @@ pub struct Player {
 impl Player {
     pub fn new(name: &str) -> Player {
         Player {
+            id: Uuid::new_v4().to_string(),
             name: name.to_string(),
             hand: Vec::new(),
             catched: Vec::new(),
@@ -29,22 +70,50 @@ impl Player {
         }
     }
 
+    pub fn hand_points(&self) -> ComparativePoints {
+        let mut all_diamonds: Vec<u8> = Vec::new();
+        let mut primiera: PrimieraEvaluation = PrimieraEvaluation {
+            diamonds: 0,
+            hearts: 0,
+            clubs: 0,
+            spades: 0,
+        };
+
+        for card in self.catched.iter() {
+            primiera.check_card(card);
+            if let Card::Diamond(v) = card {
+                all_diamonds.push(*v);
+            }
+        }
+
+        let mut low_ladder = 0;
+        for i in 1..8 {
+            if all_diamonds.contains(&i) {
+                low_ladder += 1;
+            } else {
+                break;
+            }
+        }
+
+        ComparativePoints {
+            player_id: self.id.clone(),
+            cards: self.catched.len() as u8,
+            primiera: primiera.diamonds + primiera.hearts + primiera.clubs + primiera.spades,
+            diamonds: all_diamonds.len() as u8,
+            pretty_seven: all_diamonds.contains(&7),
+            high_ladder: all_diamonds.contains(&8)
+                && all_diamonds.contains(&9)
+                && all_diamonds.contains(&10),
+            low_ladder,
+        }
+    }
+
     pub fn start_game(&mut self) {
         self.points = 0;
     }
 
     pub fn start_hand(&mut self) {
         self.brooms = 0;
-    }
-
-    pub fn end_hand(&mut self, deck: &mut Vec<Card>) -> Option<u8> {
-        let mut total_points = 0;
-        // TODO: conteggio punti
-        total_points += self.brooms;
-        self.points += total_points;
-        deck.append(&mut self.catched);
-
-        Some(total_points)
     }
 
     pub fn draw(&mut self, deck: &mut Vec<Card>) {

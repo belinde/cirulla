@@ -1,7 +1,6 @@
-use std::fmt::{Debug, Display};
+use std::fmt::Display;
 
-#[derive(Clone, Copy)]
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Card {
     Heart(u8),
     Diamond(u8),
@@ -16,6 +15,14 @@ impl Card {
             Self::Diamond(v) => *v,
             Self::Club(v) => *v,
             Self::Spade(v) => *v,
+        }
+    }
+
+    pub fn primiera_value(&self) -> u8 {
+        match self.value() {
+            1 => 13,
+            8 | 9 | 10 => 1,
+            v => v * 2,
         }
     }
 
@@ -42,11 +49,5 @@ impl Card {
 impl Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}", self.name(), self.suit())
-    }
-}
-
-impl Debug for Card {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.to_string().as_str())
     }
 }

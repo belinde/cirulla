@@ -1,4 +1,4 @@
-use cirulla_lib::{Card, Effect, Game, Player};
+use cirulla_lib::{Card, Effect, Game, HandResult, Player};
 use crossterm::style::Stylize;
 use crossterm::{
     cursor::{Hide, MoveTo, Show},
@@ -42,6 +42,11 @@ impl UI {
         self.stdout.flush().unwrap();
     }
 
+    pub fn show_hand_result(&mut self, result: &HandResult) {
+        println!("Risultato: {:#?}", result);
+        self.wait_for_key();
+    }
+
     pub fn draw_winner(&mut self, game: &Game) -> Result<(), Error> {
         self.clear()?;
         self.apply()?;
@@ -53,17 +58,17 @@ impl UI {
             .collect();
         points.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
-        let last_line: u16 = game.players.len() as u16 + 5;
-        self.draw_box((0, 0), (last_line, 28), true)?;
+        let last_line: u16 = game.players.len() as u16 + 7;
+        self.draw_box((0, 0), (28, last_line), true)?;
         self.stdout
-            .queue(MoveTo(1, 1))?
-            .queue(Print("CLASSIFICA FINALE"))?
-            .queue(MoveTo(1, last_line - 1))?
+            .queue(MoveTo(5, 2))?
+            .queue(Print("CLASSIFICA FINALE".bold()))?
+            .queue(MoveTo(5, last_line - 1))?
             .queue(Print("Premi Q per uscire".to_string()))?;
 
         for (i, (name, points)) in points.iter().enumerate() {
             self.stdout
-                .queue(MoveTo(2, i as u16 + 3))?
+                .queue(MoveTo(3, i as u16 + 4))?
                 .queue(Print(format!("{}° {} - {}", i + 1, name, points)))?;
         }
 
@@ -78,6 +83,15 @@ impl UI {
                     }
                     _ => {}
                 },
+                _ => {}
+            }
+        }
+    }
+
+    pub fn wait_for_key(&mut self) {
+        loop {
+            match read().unwrap() {
+                Event::Key(_) => break,
                 _ => {}
             }
         }

@@ -1,7 +1,7 @@
 use crate::{
     card::Card,
     catching_logic::catching_logic,
-    player::{Effect, Player},
+    player::{ComparativePoints, Effect, Player},
 };
 use rand::seq::SliceRandom;
 
@@ -14,6 +14,18 @@ pub struct Game {
     pub current_player_index: usize,
     last_player_caught: usize,
     pub win_at: u8,
+}
+
+#[derive(Debug)]
+pub struct HandResult {
+    pub points: Vec<ComparativePoints>,
+    pub someone_wins: bool,
+    pub pretty_seven: String,
+    pub cards: Option<String>,
+    pub primiera: Option<String>,
+    pub diamonds: Option<String>,
+    pub high_ladder: Option<String>,
+    pub low_ladder: Option<String>,
 }
 
 impl Game {
@@ -126,7 +138,7 @@ impl Game {
         Ok(())
     }
 
-    pub fn end_hand(&mut self) -> Result<bool, &str> {
+    pub fn end_hand(&mut self) -> Result<HandResult, &str> {
         if !self.hand_started {
             return Err("Hand not yet started");
         }
@@ -136,10 +148,88 @@ impl Game {
             last_player.catch(*card);
         }
 
+        let points = self
+            .players
+            .iter()
+            .map(|player| player.hand_points())
+            .collect::<Vec<_>>();
+
+        let mut pretty_seven: String = "".to_string();
+        let mut high_ladder = None;
+        let mut low_ladder = None;
+        let mut low_ladder_value = 0;
+        let mut cards = None;
+        let mut cards_value = 0;
+        let mut diamonds = None;
+        let mut diamonds_value = 0;
+        let mut primiera = None;
+        let mut primiera_value = 0;
+
+        points.iter().for_each(|p| {
+            if p.pretty_seven {
+                pretty_seven = p.player_id.clone();
+            }
+
+            if p.high_ladder {
+                high_ladder = Some(p.player_id.clone());
+            }
+
+            if p.low_ladder > low_ladder_value {
+                low_ladder = Some(p.player_id.clone());
+                low_ladder_value = p.low_ladder;
+            } else if p.low_ladder == low_ladder_value {
+                low_ladder = None;
+            }
+
+            if p.cards > cards_value {
+                cards = Some(p.player_id.clone());
+                cards_value = p.cards;
+            } else if p.cards == cards_value {
+                cards = None;
+            }
+
+            if p.diamonds > diamonds_value {
+                diamonds = Some(p.player_id.clone());
+                diamonds_value = p.diamonds;
+            } else if p.diamonds == diamonds_value {
+                diamonds = None;
+            }
+
+            if p.primiera > primiera_value {
+                primiera = Some(p.player_id.clone());
+                primiera_value = p.primiera;
+            } else if p.primiera == primiera_value {
+                primiera = None;
+            }
+        });
+
         let mut someone_wins = false;
 
         for player in self.players.iter_mut() {
-            player.end_hand(&mut self.deck);
+            let mut player_hand_points = player.brooms;
+
+            if pretty_seven == player.id {
+                player_hand_points += 1;
+            }
+            if cards == Some(player.id.clone()) {
+                player_hand_points += 1;
+            }
+            if diamonds == Some(player.id.clone()) {
+                player_hand_points += 1;
+            }
+            if primiera == Some(player.id.clone()) {
+                player_hand_points += 1;
+            }
+            if high_ladder == Some(player.id.clone()) {
+                player_hand_points += 5;
+            }
+            if low_ladder_value > 0 && low_ladder == Some(player.id.clone()) {
+                player_hand_points += low_ladder_value;
+            }
+
+            player.points += player_hand_points;
+            self.deck.append(&mut player.catched);
+
             if player.points >= self.win_at {
                 someone_wins = true;
             }
@@ -147,7 +237,18 @@ impl Game {
 
         self.hand_started = false;
 
-        Ok(someone_wins)
+        self.players.rotate_left(1);
+
+        Ok(HandResult {
+            points,
+            someone_wins,
+            pretty_seven,
+            low_ladder,
+            high_ladder,
+            cards,
+            diamonds,
+            primiera,
+        })
     }
 
     pub fn start_round(&mut self) -> Result<(), &str> {
