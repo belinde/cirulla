@@ -8,7 +8,6 @@ pub enum Effect {
     DeckHandlerBroom(u8),
 }
 
-#[derive(Debug)]
 pub struct ComparativePoints {
     pub player_id: String,
     pub cards: u8,
@@ -17,6 +16,7 @@ pub struct ComparativePoints {
     pub pretty_seven: bool,
     pub high_ladder: bool,
     pub low_ladder: u8,
+    pub cards_taken: Vec<Card>,
 }
 
 struct PrimieraEvaluation {
@@ -79,7 +79,10 @@ impl Player {
             spades: 0,
         };
 
+        let mut cards_taken = Vec::new();
+
         for card in self.catched.iter() {
+            cards_taken.push(card.clone());
             primiera.check_card(card);
             if let Card::Diamond(v) = card {
                 all_diamonds.push(*v);
@@ -94,9 +97,13 @@ impl Player {
                 break;
             }
         }
+        if low_ladder < 3 {
+            low_ladder = 0;
+        }
 
         ComparativePoints {
             player_id: self.id.clone(),
+            cards_taken,
             cards: self.catched.len() as u8,
             primiera: primiera.diamonds + primiera.hearts + primiera.clubs + primiera.spades,
             diamonds: all_diamonds.len() as u8,

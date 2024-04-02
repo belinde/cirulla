@@ -7,6 +7,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
     QueueableCommand,
 };
+use std::collections::HashMap;
 use std::{
     io::{stdout, Error, Stdout, Write},
     process,
@@ -42,9 +43,75 @@ impl UI {
         self.stdout.flush().unwrap();
     }
 
-    pub fn show_hand_result(&mut self, result: &HandResult) {
-        println!("Risultato: {:#?}", result);
-        self.wait_for_key();
+    pub fn show_hand_result(
+        &mut self,
+        result: &HandResult,
+        players_list: &Vec<Player>,
+    ) -> Result<(), Error> {
+        self.clear()?;
+
+        let mut people = HashMap::new();
+        for p in players_list.iter() {
+            people.insert(p.id.to_owned(), p.name.to_owned());
+        }
+
+        self.stdout
+            .queue(MoveTo(2, 2))?
+            .queue(Print(
+                "Carte:         Denari:        Primiera:      Settebello:      Alta:          Bassa:"
+                    .bold(),
+            ))?
+            .queue(MoveTo(2, 3))?
+            .queue(Print(
+                match result.cards {
+                    Some(ref cards) => &people[cards],
+                    None => "-",
+                }))?
+            .queue(MoveTo(17, 3))?
+            .queue(Print(
+                match result.diamonds {
+                    Some(ref diamond) => &people[diamond],
+                    None => "-",
+                }))?
+            .queue(MoveTo(32, 3))?
+            .queue(Print(
+                match result.primiera {
+                    Some(ref primiera) => &people[primiera],
+                    None => "-",
+                }))?
+            .queue(MoveTo(47, 3))?
+            .queue(Print(&people[&result.pretty_seven]))?
+            .queue(MoveTo(64, 3))?
+            .queue(Print(
+                match result.high_ladder {
+                    Some(ref hilad) => &people[hilad],
+                    None => "-",
+                }))?
+                .queue(MoveTo(79, 3))?
+                .queue(Print(match result.low_ladder {
+                    Some(ref low_ladder) => &people[low_ladder],
+                    None => "-",
+                }))?;
+
+        if result.low_ladder_value > 0 {
+            self.stdout
+                .queue(MoveTo(86, 2))?
+                .queue(Print(result.low_ladder_value.to_string()))?;
+        }
+
+        for (i, a) in result.points.iter().enumerate() {
+            self.stdout
+                .queue(MoveTo(2, 7 + (i as u16) * 6))?
+                .queue(Print(&people[&a.player_id]))?;
+            for (j, c) in a.cards_taken.iter().enumerate() {
+                self.card(c, 2 + (j as u16) * 3, 8 + (i as u16) * 6, true)?;
+            }
+        }
+
+        self.draw_box(0, 0, 90, result.points.len() as u16 * 6 + 8, true)?;
+
+        self.wait_for_key('c', 40, result.points.len() as u16 * 6 + 10);
+        Ok(())
     }
 
     pub fn draw_winner(&mut self, game: &Game) -> Result<(), Error> {
@@ -59,12 +126,10 @@ impl UI {
         points.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
         let last_line: u16 = game.players.len() as u16 + 7;
-        self.draw_box((0, 0), (28, last_line), true)?;
+        self.draw_box(0, 0, 28, last_line, true)?;
         self.stdout
             .queue(MoveTo(5, 2))?
-            .queue(Print("CLASSIFICA FINALE".bold()))?
-            .queue(MoveTo(5, last_line - 1))?
-            .queue(Print("Premi Q per uscire".to_string()))?;
+            .queue(Print("CLASSIFICA FINALE".bold()))?;
 
         for (i, (name, points)) in points.iter().enumerate() {
             self.stdout
@@ -72,26 +137,29 @@ impl UI {
                 .queue(Print(format!("{}° {} - {}", i + 1, name, points)))?;
         }
 
-        self.apply()?;
+        self.wait_for_key('q', 40, 22);
+        self.reset(true);
+        process::exit(0);
+    }
 
+    pub fn wait_for_key(&mut self, wanted: char, column: u16, row: u16) {
+        self.draw_box(column, row, 30, 2, false).unwrap();
+        self.stdout
+            .queue(MoveTo(column + 2, row + 1))
+            .unwrap()
+            .queue(Print(format!("Premi `{}` per continuare...", wanted)))
+            .unwrap();
+        self.apply().unwrap();
         loop {
             match read().unwrap() {
                 Event::Key(evt) => match evt.code {
-                    KeyCode::Char('q') | KeyCode::Char('c') => {
-                        self.reset(true);
-                        process::exit(0);
+                    KeyCode::Char(character) => {
+                        if character == wanted {
+                            break;
+                        }
                     }
                     _ => {}
                 },
-                _ => {}
-            }
-        }
-    }
-
-    pub fn wait_for_key(&mut self) {
-        loop {
-            match read().unwrap() {
-                Event::Key(_) => break,
                 _ => {}
             }
         }
@@ -169,32 +237,39 @@ impl UI {
         self.stdout.flush()
     }
 
-    fn draw_box(&mut self, pos: (u16, u16), size: (u16, u16), thick: bool) -> Result<(), Error> {
+    fn draw_box(
+        &mut self,
+        column: u16,
+        row: u16,
+        width: u16,
+        height: u16,
+        thick: bool,
+    ) -> Result<(), Error> {
         self.stdout
-            .queue(MoveTo(pos.0, pos.1))?
+            .queue(MoveTo(column, row))?
             .queue(Print(if thick { "╔" } else { "┌" }))?
-            .queue(MoveTo(pos.0 + size.0, pos.1))?
+            .queue(MoveTo(column + width, row))?
             .queue(Print(if thick { "╗" } else { "┐" }))?
-            .queue(MoveTo(pos.0, pos.1 + size.1))?
+            .queue(MoveTo(column, row + height))?
             .queue(Print(if thick { "╚" } else { "└" }))?
-            .queue(MoveTo(pos.0 + size.0, pos.1 + size.1))?
+            .queue(MoveTo(column + width, row + height))?
             .queue(Print(if thick { "╝" } else { "┘" }))?;
 
         let horizontal = if thick { "═" } else { "─" };
-        for i in 1..size.0 {
+        for i in 1..width {
             self.stdout
-                .queue(MoveTo(pos.0 + i, pos.1))?
+                .queue(MoveTo(column + i, row))?
                 .queue(Print(horizontal))?
-                .queue(MoveTo(pos.0 + i, pos.1 + size.1))?
+                .queue(MoveTo(column + i, row + height))?
                 .queue(Print(horizontal))?;
         }
 
         let vertical = if thick { "║" } else { "│" };
-        for i in 1..size.1 {
+        for i in 1..height {
             self.stdout
-                .queue(MoveTo(pos.0, pos.1 + i))?
+                .queue(MoveTo(column, row + i))?
                 .queue(Print(vertical))?
-                .queue(MoveTo(pos.0 + size.0, pos.1 + i))?
+                .queue(MoveTo(column + width, row + i))?
                 .queue(Print(vertical))?;
         }
 
@@ -202,17 +277,18 @@ impl UI {
     }
 
     fn table(&mut self, table: &Vec<Card>, deck: usize, win_at: u8) -> Result<(), Error> {
-        self.draw_box((40, 0), (30, 21), false)?;
+        self.draw_box(40, 0, 30, 21, false)?;
         self.stdout
             .queue(MoveTo(46, 1))?
             .queue(Print(format!("Carte nel mazzo: {}", deck)))?
             .queue(MoveTo(46, 20))?
-            .queue(Print(format!("Si vince ai {} punti", win_at)))?;
+            .queue(Print(format!("Si vince a {} punti", win_at)))?;
 
         table.iter().enumerate().for_each(|(i, card)| {
             self.card(
                 card,
-                (44 + (i % 4) as u16 * 6, (5 + (i / 4) * 4) as u16),
+                44 + (i % 4) as u16 * 6,
+                (5 + (i / 4) * 4) as u16,
                 true,
             )
             .unwrap();
@@ -228,7 +304,7 @@ impl UI {
         dealer: bool,
         active: bool,
     ) -> Result<(), Error> {
-        self.draw_box((0, ord * PLAYER_HEIGHT), (35, PLAYER_HEIGHT - 1), active)?;
+        self.draw_box(0, ord * PLAYER_HEIGHT, 35, PLAYER_HEIGHT - 1, active)?;
 
         self.stdout
             .queue(MoveTo(2, ord * PLAYER_HEIGHT + 1))?
@@ -243,7 +319,8 @@ impl UI {
         player.hand.iter().enumerate().for_each(|(i, card)| {
             self.card(
                 card,
-                (16 + i as u16 * 6, ord * PLAYER_HEIGHT + 3),
+                16 + i as u16 * 6,
+                ord * PLAYER_HEIGHT + 3,
                 active || player.hand_visible,
             )
             .unwrap();
@@ -272,15 +349,15 @@ impl UI {
         Ok(())
     }
 
-    fn card(&mut self, card: &Card, pos: (u16, u16), show: bool) -> Result<(), Error> {
-        self.draw_box(pos, (4, 3), false)?;
+    fn card(&mut self, card: &Card, column: u16, row: u16, show: bool) -> Result<(), Error> {
+        self.draw_box(column, row, 4, 3, false)?;
 
         if show {
             let suit = match card {
-                Card::Heart(_) => "♥",
-                Card::Diamond(_) => "♦",
-                Card::Club(_) => "♣",
-                Card::Spade(_) => "♠",
+                Card::Heart(_) => " ♥ ",
+                Card::Diamond(_) => " ♦ ",
+                Card::Club(_) => " ♣ ",
+                Card::Spade(_) => " ♠ ",
             };
 
             self.stdout
@@ -288,9 +365,11 @@ impl UI {
                     Card::Heart(_) | Card::Diamond(_) => Color::Red,
                     _ => Color::Blue,
                 }))?
-                .queue(MoveTo(pos.0 + 2, pos.1 + 1))?
+                .queue(MoveTo(column + 1, row + 1))?
                 .queue(Print(suit))?
-                .queue(MoveTo(pos.0 + 2, pos.1 + 2))?
+                .queue(MoveTo(column + 1, row + 2))?
+                .queue(Print("   "))?
+                .queue(MoveTo(column + 2, row + 2))?
                 .queue(Print(card.name()))?
                 .queue(SetForegroundColor(Color::Reset))?;
         }

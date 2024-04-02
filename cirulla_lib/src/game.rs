@@ -16,7 +16,6 @@ pub struct Game {
     pub win_at: u8,
 }
 
-#[derive(Debug)]
 pub struct HandResult {
     pub points: Vec<ComparativePoints>,
     pub someone_wins: bool,
@@ -26,6 +25,7 @@ pub struct HandResult {
     pub diamonds: Option<String>,
     pub high_ladder: Option<String>,
     pub low_ladder: Option<String>,
+    pub low_ladder_value: u8,
 }
 
 impl Game {
@@ -177,8 +177,6 @@ impl Game {
             if p.low_ladder > low_ladder_value {
                 low_ladder = Some(p.player_id.clone());
                 low_ladder_value = p.low_ladder;
-            } else if p.low_ladder == low_ladder_value {
-                low_ladder = None;
             }
 
             if p.cards > cards_value {
@@ -244,6 +242,7 @@ impl Game {
             someone_wins,
             pretty_seven,
             low_ladder,
+            low_ladder_value,
             high_ladder,
             cards,
             diamonds,
