@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub enum Response {
     Hi(String),
     Scream((String, String)),

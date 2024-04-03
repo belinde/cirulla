@@ -3,6 +3,7 @@ use log::{info, warn};
 use std::{
     io::{prelude::*, BufReader},
     net::TcpStream,
+    str::FromStr,
     sync::mpsc::Sender,
     thread,
 };
@@ -11,6 +12,7 @@ pub type SessionCommand = (String, Command);
 
 pub struct Session {
     pub id: String,
+    pub name: Option<String>,
     command_sender: Sender<SessionCommand>,
     stream: TcpStream,
 }
@@ -19,6 +21,7 @@ impl Session {
     pub fn new(stream: TcpStream, command_sender: Sender<SessionCommand>) -> Session {
         Session {
             id: stream.peer_addr().unwrap().to_string(),
+            name: None,
             stream,
             command_sender,
         }
@@ -55,12 +58,12 @@ impl Session {
                     }
                 }
 
-                match Command::from_string(String::from_utf8_lossy(&incoming).to_string()) {
-                    Some(command) => {
+                match Command::from_str(String::from_utf8_lossy(&incoming).as_ref()) {
+                    Ok(command) => {
                         sender.send((session_id.clone(), command)).unwrap();
                     }
-                    None => {
-                        warn!("Failed to parse command");
+                    Err(reason) => {
+                        warn!("Failed to parse command: {}", reason);
                     }
                 }
             }

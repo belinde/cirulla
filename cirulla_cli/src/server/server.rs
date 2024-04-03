@@ -1,6 +1,6 @@
 use super::command::Command;
+use super::response::Response;
 use super::session::{Session, SessionCommand};
-use crate::server::response::Response;
 use log::{debug, info, warn};
 use std::collections::HashMap;
 use std::sync::{mpsc::channel, Arc, Mutex};
@@ -25,17 +25,56 @@ impl Server {
 
     pub fn execute(&mut self, session_id: &str, command: Command) {
         debug!("Executing command {:?} on session {}", command, session_id);
-        let session = self.sessions.get_mut(session_id).unwrap();
 
         match command {
+            Command::Error(message) => {
+                self.error(session_id, message);
+            }
             Command::Hello(name) => {
-                session.send(Response::Hi(name.clone()));
+                self.hello(session_id, name);
             }
             Command::Scream(message) => {
-                for s in self.sessions.values_mut() {
-                    s.send(Response::Scream((session_id.to_owned(), message.clone())));
-                }
+                self.scream(session_id, message);
             }
+        }
+    }
+
+    pub fn error(&mut self, session_id: &str, message: String) {
+        self.sessions
+            .get_mut(session_id)
+            .unwrap()
+            .send(Response::Error(message));
+    }
+
+    fn hello(&mut self, session_id: &str, name: String) {
+        let existent = self
+            .sessions
+            .values()
+            .filter(|s| s.name == Some(name.clone()))
+            .count();
+
+        let session = self.sessions.get_mut(session_id).unwrap();
+
+        if existent > 0 {
+            session.send(Response::Error("Name already in use".to_string()));
+            return;
+        }
+
+        session.name = Some(name.clone());
+        session.send(Response::Hi(name.clone()));
+    }
+
+    fn scream(&mut self, session_id: &str, message: String) {
+        let session = self.sessions.get(session_id).unwrap();
+        match &session.name {
+            Some(name) => self.broadcast(Response::Scream((name.clone(), message.clone()))),
+            None => self.error(session_id, "You need to say hello first".to_string()),
+        }
+    }
+
+    fn broadcast(&mut self, message: Response) {
+        for session in self.sessions.values_mut() {
+            session.send(message.clone());
         }
     }
 }
