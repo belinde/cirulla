@@ -1,27 +1,33 @@
+use super::{command::Command, response::Response};
 use log::{info, warn};
 use std::{
-    io::{prelude::*, BufReader}, net::TcpStream, sync::mpsc::Sender, thread
+    io::{prelude::*, BufReader},
+    net::TcpStream,
+    sync::mpsc::Sender,
+    thread,
 };
-
-use super::command::Command;
 
 pub type SessionCommand = (String, Command);
 
 pub struct Session {
     pub id: String,
     command_sender: Sender<SessionCommand>,
-    pub stream: TcpStream,
+    stream: TcpStream,
 }
 
 impl Session {
     pub fn new(stream: TcpStream, command_sender: Sender<SessionCommand>) -> Session {
-        let id = stream.peer_addr().unwrap().to_string();
-
         Session {
-            id,
+            id: stream.peer_addr().unwrap().to_string(),
             stream,
             command_sender,
         }
+    }
+
+    pub fn send(&mut self, message: Response) {
+        self.stream
+            .write_all(message.to_string().as_bytes())
+            .unwrap();
     }
 
     pub fn read(&self) {

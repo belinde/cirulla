@@ -1,9 +1,10 @@
 use super::command::Command;
 use super::session::{Session, SessionCommand};
+use crate::server::response::Response;
 use log::{debug, info, warn};
 use std::collections::HashMap;
-use std::sync::{mpsc, Arc, Mutex};
-use std::{io::prelude::*, net::TcpListener, thread};
+use std::sync::{mpsc::channel, Arc, Mutex};
+use std::{net::TcpListener, thread};
 
 struct Server {
     sessions: HashMap<String, Session>,
@@ -24,17 +25,16 @@ impl Server {
 
     pub fn execute(&mut self, session_id: &str, command: Command) {
         debug!("Executing command {:?} on session {}", command, session_id);
+        let session = self.sessions.get_mut(session_id).unwrap();
 
         match command {
             Command::Hello(name) => {
-                format!("Hello, {}!\n", name);
+                session.send(Response::Hi(name.clone()));
             }
             Command::Scream(message) => {
-                self.sessions.iter_mut().for_each(|(id, session)| {
-                    if id != session_id {
-                        session.stream.write_all(message.as_bytes()).unwrap();
-                    }
-                });
+                for s in self.sessions.values_mut() {
+                    s.send(Response::Scream((session_id.to_owned(), message.clone())));
+                }
             }
         }
     }
@@ -44,11 +44,11 @@ pub fn start_server(address: String, port: u16) {
     let listener = TcpListener::bind(format!("{}:{}", address, port));
     let server = Arc::new(Mutex::new(Server::new()));
 
-    let (session_command_sender, session_command_receiver) = mpsc::channel::<SessionCommand>();
+    let (command_sender, command_receiver) = channel::<SessionCommand>();
 
     let server_clone = server.clone();
     thread::spawn(move || {
-        for (session_id, command) in session_command_receiver {
+        for (session_id, command) in command_receiver {
             server_clone.lock().unwrap().execute(&session_id, command);
         }
     });
@@ -61,7 +61,7 @@ pub fn start_server(address: String, port: u16) {
                 match incoming_stream {
                     Ok(tcp_stream) => {
                         info!("New connection from {}", tcp_stream.peer_addr().unwrap());
-                        let session = Session::new(tcp_stream, session_command_sender.clone());
+                        let session = Session::new(tcp_stream, command_sender.clone());
                         server.lock().unwrap().register_session(session).read();
                     }
                     Err(e) => {
