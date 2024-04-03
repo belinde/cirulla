@@ -3,6 +3,8 @@ mod server;
 mod ui;
 
 use clap::{Parser, ValueEnum};
+use local::LocalGame;
+use server::start_server;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 enum Mode {
@@ -44,16 +46,14 @@ fn main() {
 
     match args.mode {
         Mode::Server => {
-            server::start_server(args.address, args.port);
+            start_server(args.address, args.port);
         }
         Mode::Client => {
             println!("Connecting to {}:{}", args.address, args.port);
             panic!("Client mode is not implemented yet");
         }
         Mode::Local => {
-            println!("Playing locally");
-            let mut local_game = local::LocalGame::new(&args.name, args.win_at);
-            local_game.start();
+            LocalGame::new(&args.name, args.win_at).start();
         }
     }
 }
