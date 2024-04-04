@@ -43,7 +43,7 @@ impl Server {
         self.sessions
             .get_mut(session_id)
             .unwrap()
-            .send(Response::Error(message));
+            .send_response(Response::Error(message));
     }
 
     fn hello(&mut self, session_id: &str, name: String) {
@@ -56,12 +56,12 @@ impl Server {
         let session = self.sessions.get_mut(session_id).unwrap();
 
         if existent > 0 {
-            session.send(Response::Error("Name already in use".to_string()));
+            session.send_response(Response::Error("Name already in use".to_string()));
             return;
         }
 
         session.name = Some(name.clone());
-        session.send(Response::Hi(name.clone()));
+        session.send_response(Response::Hi(name.clone()));
     }
 
     fn scream(&mut self, session_id: &str, message: String) {
@@ -74,7 +74,7 @@ impl Server {
 
     fn broadcast(&mut self, message: Response) {
         for session in self.sessions.values_mut() {
-            session.send(message.clone());
+            session.send_response(message.clone());
         }
     }
 }
@@ -99,9 +99,8 @@ pub fn start_server(address: String, port: u16) {
             for incoming_stream in listener.incoming() {
                 match incoming_stream {
                     Ok(tcp_stream) => {
-                        info!("New connection from {}", tcp_stream.peer_addr().unwrap());
                         let session = Session::new(tcp_stream, command_sender.clone());
-                        server.lock().unwrap().register_session(session).read();
+                        server.lock().unwrap().register_session(session).read_commands();
                     }
                     Err(e) => {
                         warn!("Failed to accept connection: {}", e.to_string());

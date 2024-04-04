@@ -19,28 +19,31 @@ pub struct Session {
 
 impl Session {
     pub fn new(stream: TcpStream, command_sender: Sender<SessionCommand>) -> Session {
+        let id = stream.peer_addr().unwrap().to_string();
+        info!("New connection from {}", id);
+
         Session {
-            id: stream.peer_addr().unwrap().to_string(),
+            id,
             name: None,
             stream,
             command_sender,
         }
     }
 
-    pub fn send(&mut self, message: Response) {
+    pub fn send_response(&mut self, message: Response) {
         self.stream
             .write_all(message.to_string().as_bytes())
             .unwrap();
     }
 
-    pub fn read(&self) {
+    pub fn read_commands(&self) {
         let sender = self.command_sender.clone();
         let session_id = self.id.clone();
-        let reader = self
+        let stream = self
             .stream
             .try_clone()
             .expect("Failed to clone reading stream");
-        let mut reader = BufReader::new(reader);
+        let mut reader = BufReader::new(stream);
 
         thread::spawn(move || {
             loop {
