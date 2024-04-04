@@ -28,25 +28,31 @@ La sessione inizia con la presentazione del client; il nome viene registrato e s
 <<< ERROR [explanation]
 ```
 
+Manda un messaggio a tutti i giocatori connessi.
+```
+>>> SCREAM Ciao a tutti!
+<<< SCREAM FROM Franco: Ciao a tutti!
+```
+
 Elenca i tavoli disponibili; viene indicato il nome, il numero di partecipanti in attesa e il numero desiderato di giocatori.
 ```
->>> LIST TABLES
-<<< AVAILABLES
+>>> TABLE LIST
+<<< TABLES
 <<< something 2/4
 <<< another 1/2
 ```
 
 Comandi per unirsi o creare un tavolo. In caso di successo il server risponde WAIT, per poi mandare le istruzioni di gioco appena il numero di partecipanti è stato raggiunto.
 ```
->>> JOIN something
-<<< JOINED something 
+>>> TABLE JOIN something
+<<< TABLE JOINED something 
 <<< WAIT
 
->>> JOIN unexistent
+>>> TABLE JOIN unexistent
 <<< ERROR [explanation]
 
->>> NEW TABLE friendly 4
-<<< JOINED friendly 
+>>> TABLE NEW friendly 4
+<<< TABLE JOINED friendly 
 <<< WAIT
 ```
 

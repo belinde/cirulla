@@ -19,8 +19,16 @@ impl Server {
 
     pub fn register_session(&mut self, session: Session) -> &Session {
         let id = session.id.clone();
+        debug!("Registering session {}", id );
         self.sessions.insert(id.clone(), session);
         self.sessions.get(&id).unwrap()
+    }
+
+    fn unregister_session(&mut self, id: &str) {
+        debug!("Unregistering session {}", id);
+        self.sessions.get(id).unwrap().disconnect();
+        self.sessions.remove(id);
+        // TODO: notify tables and players
     }
 
     pub fn execute(&mut self, session_id: &str, command: Command) {
@@ -35,6 +43,9 @@ impl Server {
             }
             Command::Scream(message) => {
                 self.scream(session_id, message);
+            }
+            Command::Quit => {
+                self.unregister_session(session_id);
             }
         }
     }

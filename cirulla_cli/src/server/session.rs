@@ -3,7 +3,6 @@ use log::{info, warn};
 use std::{
     io::{prelude::*, BufReader},
     net::TcpStream,
-    str::FromStr,
     sync::mpsc::Sender,
     thread,
 };
@@ -36,6 +35,11 @@ impl Session {
             .unwrap();
     }
 
+    pub fn disconnect(&self) {
+        info!("Disconnecting session {}", self.id);
+        self.stream.shutdown(std::net::Shutdown::Both).unwrap();
+    }
+
     pub fn read_commands(&self) {
         let sender = self.command_sender.clone();
         let session_id = self.id.clone();
@@ -61,16 +65,21 @@ impl Session {
                     }
                 }
 
-                match Command::from_str(String::from_utf8_lossy(&incoming).as_ref()) {
-                    Ok(command) => {
-                        sender.send((session_id.clone(), command)).unwrap();
-                    }
-                    Err(reason) => {
-                        warn!("Failed to parse command: {}", reason);
-                    }
+                let command = Command::from_string(String::from_utf8_lossy(&incoming).as_ref());
+                if let Command::Quit = command {
+                    break;
                 }
+                sender
+                    .send((
+                        session_id.clone(),
+                        command,
+                    ))
+                    .expect("Failed to send command");
             }
 
+            sender
+                .send((session_id.clone(), Command::Quit))
+                .expect("Cannot send disconnect command");
             info!("End handle connection - connection closed");
         });
     }
