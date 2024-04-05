@@ -60,7 +60,7 @@ mod tests {
     #[test]
     fn ace_catch_all() {
         let mut table = table(&[2, 3, 4]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(1);
         let can_broom = true;
 
@@ -76,7 +76,7 @@ mod tests {
     #[test]
     fn ace_catch_all_cannot_broom() {
         let mut table = table(&[2, 3, 4]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(1);
         let can_broom = false;
 
@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn ace_catch_only_ace() {
         let mut table = table(&[1, 2]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(1);
         let can_broom = true;
 
@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn ace_catch_with_15_and_ace() {
         let mut table = table(&[1, 10, 3]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(1);
         let can_broom = true;
 
@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn any_normal_catch_all() {
         let mut table = table(&[2, 3, 4]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(6);
         let can_broom = true;
 
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn any_normal_catch_all_no_broom() {
         let mut table = table(&[2, 3, 4]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(6);
         let can_broom = false;
 
@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn any_normal_catch_many_normally() {
         let mut table = table(&[2, 3, 4]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(5);
         let can_broom = true;
 
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn any_normal_catch_many_with_15() {
         let mut table = table(&[2, 3, 4]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(8);
         let can_broom = true;
 
@@ -188,7 +188,7 @@ mod tests {
     #[test]
     fn any_normal_catch_single_normally() {
         let mut table = table(&[2, 3, 4]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(3);
         let can_broom = true;
 
@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn any_normal_catch_single_with_15() {
         let mut table = table(&[2, 6, 5]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(9);
         let can_broom = true;
 
@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn multiple_catches_takes_biggest() {
         let mut table = table(&[2, 2, 10, 4]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(4);
         let can_broom = true;
 
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn nothing_to_catch() {
         let mut table = table(&[5, 4, 7]);
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(2);
         let can_broom = true;
 
@@ -252,7 +252,7 @@ mod tests {
     #[test]
     fn ace_on_empty_table() {
         let mut table = Vec::new();
-        let mut player = Player::new("Test");
+        let mut player = Player::new("Test", None);
         let card = Card::Heart(1);
         let can_broom = true;
 

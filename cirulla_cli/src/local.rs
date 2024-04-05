@@ -11,7 +11,7 @@ impl LocalGame {
     pub fn new(players: &Vec<String>, win_at: u8) -> LocalGame {
         let mut game = Game::new(win_at);
         players.iter().for_each(|name| {
-            game.add_player(name).unwrap();
+            game.add_player(name, None).unwrap();
         });
         LocalGame {
             game,
@@ -45,8 +45,10 @@ impl LocalGame {
                         }
                         NextAction::EndHand => {
                             let result = self.game.end_hand().unwrap();
-                            self.ui.show_hand_result(&result, &self.game.players).unwrap();
-                            
+                            self.ui
+                                .show_hand_result(&result, &self.game.players)
+                                .unwrap();
+
                             if result.someone_wins {
                                 break 'game;
                             } else {

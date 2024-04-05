@@ -1,8 +1,10 @@
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::card::Card;
 use std::fmt::Display;
 
+#[derive(Clone, Serialize)]
 pub enum Effect {
     Knocked(u8),
     DeckHandlerBroom(u8),
@@ -57,9 +59,9 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(name: &str) -> Player {
+    pub fn new(name: &str, id: Option<String>) -> Player {
         Player {
-            id: Uuid::new_v4().to_string(),
+            id: id.unwrap_or(Uuid::new_v4().to_string()),
             name: name.to_string(),
             hand: Vec::new(),
             catched: Vec::new(),

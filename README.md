@@ -24,7 +24,7 @@ La sessione inizia con la presentazione del client; il nome viene registrato e s
 >>> HELLO Franco
 <<< HI Franco
 
->>> HELLO AlreadyRegistered
+>>> HELLO Already Registered
 <<< ERROR [explanation]
 ```
 
@@ -37,23 +37,25 @@ Manda un messaggio a tutti i giocatori connessi.
 Elenca i tavoli disponibili; viene indicato il nome, il numero di partecipanti in attesa e il numero desiderato di giocatori.
 ```
 >>> TABLE LIST
-<<< TABLES
-<<< something 2/4
-<<< another 1/2
+<<< TABLE LIST START
+<<< d517adf0-5fa5-4b59-ad8d-14bd2ad2efed "Some pretty name" 2/4 51
+<<< 925e420e-05ac-49cb-aad6-d24cbc366ceb "another" 1/2 101
+<<< TABLE LIST END
 ```
 
 Comandi per unirsi o creare un tavolo. In caso di successo il server risponde WAIT, per poi mandare le istruzioni di gioco appena il numero di partecipanti è stato raggiunto.
 ```
->>> TABLE JOIN something
-<<< TABLE JOINED something 
+>>> TABLE JOIN d517adf0-5fa5-4b59-ad8d-14bd2ad2efed
+<<< TABLE JOINED d517adf0-5fa5-4b59-ad8d-14bd2ad2efed 
 <<< WAIT
 
->>> TABLE JOIN unexistent
+>>> TABLE JOIN unexiste-ntun-exis-tent-unexistentun
 <<< ERROR [explanation]
 
->>> TABLE NEW friendly 4
-<<< TABLE JOINED friendly 
+>>> TABLE NEW "Friendly table" 4 51
+<<< TABLE JOINED d517adf0-5fa5-4b59-ad8d-14bd2ad2efed
 <<< WAIT
+<<< TABLE CREATED d517adf0-5fa5-4b59-ad8d-14bd2ad2efed "Friendly table" 1/4 51
 ```
 
 ### cirulla_cli client

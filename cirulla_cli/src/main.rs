@@ -4,7 +4,7 @@ mod ui;
 
 use clap::{Parser, ValueEnum};
 use local::LocalGame;
-use server::start_server;
+use server::start_service;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 enum Mode {
@@ -46,7 +46,7 @@ fn main() {
 
     match args.mode {
         Mode::Server => {
-            start_server(args.address, args.port);
+            start_service(args.address, args.port);
         }
         Mode::Client => {
             println!("Connecting to {}:{}", args.address, args.port);

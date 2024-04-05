@@ -2,8 +2,32 @@ use crate::{
     card::Card,
     catching_logic::catching_logic,
     player::{ComparativePoints, Effect, Player},
+    GameError,
 };
 use rand::seq::SliceRandom;
+use serde::Serialize;
+
+#[derive(Clone, Serialize)]
+pub struct PlayerForPlayer {
+    pub id: String,
+    pub name: String,
+    pub points: u8,
+    pub brooms: u8,
+    pub catched: usize,
+    pub hand: Option<Vec<Card>>,
+    pub hand_size: usize,
+    pub effect: Vec<Effect>,
+    pub dealer: bool,
+}
+
+#[derive(Clone, Serialize)]
+pub struct GameForPlayer {
+    pub cards_in_deck: usize,
+    pub cards_on_table: Vec<Card>,
+    pub win_at: u8,
+    pub hand: Vec<Card>,
+    pub players: Vec<PlayerForPlayer>,
+}
 
 pub struct Game {
     pub deck: Vec<Card>,
@@ -50,35 +74,85 @@ impl Game {
         }
     }
 
+    pub fn as_game_for_player(&self, player_id: &str) -> GameForPlayer {
+        let player_index = self.players.iter().position(|p| p.id == player_id).unwrap();
+        let player = self.players.get(player_index).unwrap();
+
+        let players = self
+            .players
+            .iter()
+            .map(|p| PlayerForPlayer {
+                id: p.id.clone(),
+                name: p.name.clone(),
+                points: p.points,
+                brooms: p.brooms,
+                catched: p.catched.len(),
+                hand: if p.id == player_id || p.hand_visible {
+                    Some(p.hand.clone())
+                } else {
+                    None
+                },
+                hand_size: p.hand.len(),
+                effect: p.effect.clone(),
+                dealer: player_index == 0 && p.id == player_id,
+            })
+            .collect();
+
+        GameForPlayer {
+            cards_in_deck: self.deck.len(),
+            cards_on_table: self.table.clone(),
+            win_at: self.win_at,
+            hand: player.hand.clone(),
+            players,
+        }
+    }
+
     pub fn current_player(&self) -> &Player {
         self.players.get(self.current_player_index).unwrap()
     }
 
-    pub fn add_player(&mut self, name: &str) -> Result<usize, &str> {
+    pub fn add_player(&mut self, name: &str, id: Option<String>) -> Result<String, GameError> {
         if self.game_started {
-            return Err("Game already started");
+            return Err(GameError::GameAlreadyStarted);
         }
         let key = self.players.len();
         if key >= 4 {
-            return Err("Too many players");
+            return Err(GameError::TooManyPlayers);
         }
         if name.len() < 2 {
-            return Err("Name too short");
+            return Err(GameError::NameTooShort);
         }
         for other in self.players.iter() {
             if other.name == name {
-                return Err("Name already taken");
+                return Err(GameError::NameAlreadyTaken);
             }
         }
 
-        self.players.push(Player::new(name));
+        let player = Player::new(name, id);
+        let player_id = player.id.clone();
 
-        Ok(key)
+        self.players.push(player);
+
+        Ok(player_id)
     }
 
-    pub fn start_game(&mut self) -> Result<(), &str> {
+    pub fn remove_player(&mut self, player_id: &str) -> Result<(), GameError> {
+        if self.game_started {
+            return Err(GameError::GameAlreadyStarted);
+        }
+
+        match self.players.iter().position(|p| p.id == player_id) {
+            Some(index) => {
+                self.players.remove(index);
+                Ok(())
+            }
+            None => Ok(()),
+        }
+    }
+
+    pub fn start_game(&mut self) -> Result<(), GameError> {
         if self.players.len() < 2 {
-            return Err("Not enough players");
+            return Err(GameError::NotEnoughPlayers);
         }
 
         for player in self.players.iter_mut() {
@@ -90,12 +164,12 @@ impl Game {
         Ok(())
     }
 
-    pub fn start_hand(&mut self) -> Result<(), &str> {
+    pub fn start_hand(&mut self) -> Result<(), GameError> {
         if !self.game_started {
-            return Err("Game not yet started");
+            return Err(GameError::GameNotStarted);
         }
         if self.deck.len() != 40 {
-            return Err("Deck not ready");
+            return Err(GameError::DeckNotReady);
         }
 
         for player in self.players.iter_mut() {
@@ -138,9 +212,9 @@ impl Game {
         Ok(())
     }
 
-    pub fn end_hand(&mut self) -> Result<HandResult, &str> {
+    pub fn end_hand(&mut self) -> Result<HandResult, GameError> {
         if !self.hand_started {
-            return Err("Hand not yet started");
+            return Err(GameError::HandNotStarted);
         }
 
         let last_player = self.players.get_mut(self.last_player_caught).unwrap();
@@ -250,9 +324,9 @@ impl Game {
         })
     }
 
-    pub fn start_round(&mut self) -> Result<(), &str> {
+    pub fn start_round(&mut self) -> Result<(), GameError> {
         if !self.hand_started {
-            return Err("Hand not yet started");
+            return Err(GameError::HandNotStarted);
         }
         for player in self.players.iter_mut() {
             player.draw(&mut self.deck);
@@ -263,12 +337,12 @@ impl Game {
         Ok(())
     }
 
-    pub fn player_play(&mut self, card: &str) -> Result<(), &str> {
+    pub fn player_play(&mut self, card: &str) -> Result<(), GameError> {
         let player = self.players.get_mut(self.current_player_index).unwrap();
         let can_broom = !self.deck.is_empty();
 
         match player.give_card_from_hand(card) {
-            None => Err("Card not found"),
+            None => Err(GameError::CardNotFound),
             Some(card) => {
                 let caught = catching_logic(&mut self.table, player, card, can_broom);
                 if caught {
@@ -279,7 +353,7 @@ impl Game {
         }
     }
 
-    pub fn next_round_action(&mut self) -> Result<NextAction, &str> {
+    pub fn next_round_action(&mut self) -> Result<NextAction, GameError> {
         self.players
             .get_mut(self.current_player_index)
             .unwrap()
@@ -291,13 +365,7 @@ impl Game {
             self.current_player_index = 0;
         }
 
-        if self
-            .players
-            .get(self.current_player_index)
-            .unwrap()
-            .hand
-            .is_empty()
-        {
+        if self.current_player().hand.is_empty() {
             return if self.deck.is_empty() {
                 let last_catcher = self.players.get_mut(self.last_player_caught).unwrap();
                 while let Some(card) = self.table.pop() {
