@@ -27,6 +27,7 @@ pub struct GameForPlayer {
     pub win_at: u8,
     pub hand: Vec<Card>,
     pub players: Vec<PlayerForPlayer>,
+    pub active_payer: usize,
 }
 
 pub struct Game {
@@ -40,6 +41,7 @@ pub struct Game {
     pub win_at: u8,
 }
 
+#[derive(Clone, Serialize)]
 pub struct HandResult {
     pub points: Vec<ComparativePoints>,
     pub someone_wins: bool,
@@ -104,6 +106,7 @@ impl Game {
             win_at: self.win_at,
             hand: player.hand.clone(),
             players,
+            active_payer: self.current_player_index,
         }
     }
 
@@ -353,7 +356,7 @@ impl Game {
         }
     }
 
-    pub fn next_round_action(&mut self) -> Result<NextAction, GameError> {
+    pub fn next_round_action(&mut self) -> NextAction {
         self.players
             .get_mut(self.current_player_index)
             .unwrap()
@@ -371,16 +374,17 @@ impl Game {
                 while let Some(card) = self.table.pop() {
                     last_catcher.catched.push(card);
                 }
-                Ok(NextAction::EndHand)
+                NextAction::EndHand
             } else {
-                Ok(NextAction::NextRound)
+                NextAction::NextRound
             };
         }
 
-        Ok(NextAction::NextPlayer)
+        NextAction::NextPlayer
     }
 }
 
+#[derive(Debug)]
 pub enum NextAction {
     NextPlayer,
     NextRound,

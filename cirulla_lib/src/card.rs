@@ -1,4 +1,4 @@
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -59,5 +59,35 @@ impl Serialize for Card {
         S: Serializer,
     {
         serializer.serialize_str(&self.to_string())
+    }
+}
+
+fn value_from_name(name: char) -> u8 {
+    match name {
+        'A' => 1,
+        'J' => 8,
+        'Q' => 9,
+        'K' => 10,
+        v => v.to_digit(10).unwrap() as u8,
+    }
+}
+
+impl<'de> Deserialize<'de> for Card {
+    fn deserialize<D>(deserializer: D) -> Result<Card, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let mut chars = s.chars();
+        let name = chars.next().unwrap().to_ascii_uppercase();
+        let suit = chars.next().unwrap().to_ascii_uppercase();
+
+        match suit {
+            'H' =>  Ok(Card::Heart(value_from_name(name))),
+            'D' =>  Ok(Card::Diamond(value_from_name(name))),
+            'C' =>  Ok(Card::Club(value_from_name(name))),
+            'S' =>  Ok(Card::Spade(value_from_name(name))),
+            _ => Err(serde::de::Error::custom("Invalid suit")),
+        }
     }
 }

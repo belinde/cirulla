@@ -35,7 +35,7 @@ impl LocalGame {
                     self.ui.draw_table(&self.game);
                     let card = self.ui.ask_for_card(&self.game).unwrap();
                     self.game.player_play(&card).unwrap();
-                    let next_action = self.game.next_round_action().unwrap();
+                    let next_action = self.game.next_round_action();
                     match next_action {
                         NextAction::NextPlayer => {
                             continue 'round;

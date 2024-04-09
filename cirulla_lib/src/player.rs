@@ -10,6 +10,7 @@ pub enum Effect {
     DeckHandlerBroom(u8),
 }
 
+#[derive(Clone, Serialize)]
 pub struct ComparativePoints {
     pub player_id: String,
     pub cards: u8,
@@ -163,8 +164,9 @@ impl Player {
     }
 
     pub fn give_card_from_hand(&mut self, card: &str) -> Option<Card> {
+        let card = card.to_ascii_uppercase();
         for (i, c) in self.hand.iter().enumerate() {
-            if c.to_string() == card {
+            if c.to_string().to_ascii_uppercase() == card {
                 return Some(self.hand.remove(i));
             }
         }

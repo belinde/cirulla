@@ -2,6 +2,7 @@ use super::command::Command;
 use super::response::{Response, ServiceError};
 use super::session::{Session, SessionCommand};
 use super::table::Table;
+use cirulla_lib::NextAction;
 use log::{debug, info, warn};
 use std::collections::HashMap;
 use std::sync::{mpsc::channel, Arc, Mutex};
@@ -41,8 +42,6 @@ impl Server {
     }
 
     pub fn execute(&mut self, session_id: &str, command: Command) {
-        debug!("Executing command {:?} on session {}", command, session_id);
-
         match command {
             Command::Error(message) => {
                 self.error(session_id, message);
@@ -70,6 +69,99 @@ impl Server {
             }
             Command::Status => {
                 self.status(session_id);
+            }
+            Command::Play(card) => {
+                self.play(session_id, card);
+            }
+        }
+    }
+
+    fn play(&mut self, session_id: &str, card: String) {
+        let table_id = self.find_table(session_id).unwrap_or_default();
+
+        match self.tables.get_mut(&table_id) {
+            Some(table) => {
+                let player_id = table
+                    .sessions_players
+                    .get(session_id)
+                    .expect("Invalid session ID");
+
+                if player_id != &table.game.current_player().id {
+                    self.error(session_id, ServiceError::NotYourTurn);
+                    return;
+                }
+
+                match table.game.player_play(&card) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        self.error(session_id, ServiceError::GameError(e));
+                        return;
+                    }
+                }
+                let next_action = table.game.next_round_action();
+                debug!("Next action: {:?}", next_action);
+
+                if match next_action {
+                    NextAction::NextPlayer => true,
+                    NextAction::NextRound => {
+                        table.game.start_round().unwrap();
+                        true
+                    }
+                    NextAction::EndHand => {
+                        let result = table.game.end_hand().unwrap();
+                        let someone_wins = result.someone_wins;
+                        table
+                            .sessions_players
+                            .iter()
+                            .for_each(|(session_id, _player_id)| {
+                                let session = self
+                                    .sessions
+                                    .get_mut(session_id)
+                                    .expect("Invalid session ID");
+                                session.send_response(Response::HandResult(result.clone()));
+                            });
+
+                        if someone_wins {
+                            table
+                                .sessions_players
+                                .iter()
+                                .for_each(|(session_id, _player_id)| {
+                                    let session = self
+                                        .sessions
+                                        .get_mut(session_id)
+                                        .expect("Invalid session ID");
+                                    session.send_response(Response::GameEnd);
+                                });
+                                false
+                        } else {
+                            table.game.start_hand().unwrap();
+                            true
+                        }
+                    }
+                } {
+
+                let active_player = table.game.current_player().id.clone();
+                table
+                    .sessions_players
+                    .iter()
+                    .for_each(|(session_id, player_id)| {
+                        let session = self
+                            .sessions
+                            .get_mut(session_id)
+                            .expect("Invalid session ID");
+                        session.send_response(Response::GameStatus(
+                            table.game.as_game_for_player(player_id),
+                        ));
+                        if player_id == &active_player {
+                            session.send_response(Response::Play);
+                        } else {
+                            session.send_response(Response::Wait);
+                        }
+                    });
+                }
+            }
+            None => {
+                self.error(session_id, ServiceError::TableNotFound);
             }
         }
     }
@@ -155,7 +247,9 @@ impl Server {
                                     self.sessions
                                         .get_mut(session_id)
                                         .expect("Invalid session ID")
-                                        .send_response(Response::Error(ServiceError::GameError(e.clone())));
+                                        .send_response(Response::Error(ServiceError::GameError(
+                                            e.clone(),
+                                        )));
                                 });
                                 return;
                             }
@@ -164,7 +258,9 @@ impl Server {
                                     self.sessions
                                         .get_mut(session_id)
                                         .expect("Invalid session ID")
-                                        .send_response(Response::Error(ServiceError::GameError(e.clone())));
+                                        .send_response(Response::Error(ServiceError::GameError(
+                                            e.clone(),
+                                        )));
                                 });
                                 return;
                             }

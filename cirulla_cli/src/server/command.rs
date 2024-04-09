@@ -1,6 +1,5 @@
 use super::response::ServiceError;
 
-#[derive(Debug)]
 pub enum Command {
     Hello(String),
     Scream(String),
@@ -11,6 +10,7 @@ pub enum Command {
     TableJoin(u8),
     TableLeave,
     Status,
+    Play(String),
 }
 
 impl Command {
@@ -29,6 +29,7 @@ impl Command {
                 }
                 "status" => Command::Status,
                 "quit" => Command::Quit,
+                "play" => Command::Play(parts.next().unwrap_or_default().to_string()),
                 "table" => match parts.next() {
                     Some(sub_command) => match sub_command.to_lowercase().as_str() {
                         "new" => {

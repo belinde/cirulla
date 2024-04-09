@@ -1,5 +1,5 @@
 use super::table::TableInfo;
-use cirulla_lib::{GameError, GameForPlayer};
+use cirulla_lib::{GameError, GameForPlayer, HandResult};
 
 #[derive(Clone, Debug)]
 pub enum ServiceError {
@@ -10,6 +10,7 @@ pub enum ServiceError {
     TableAlreadyJoined,
     InvalidCommand,
     GameError(GameError),
+    NotYourTurn,
 }
 
 #[derive(Clone)]
@@ -24,6 +25,8 @@ pub enum Response {
     TableList(Vec<TableInfo>),
     GameStart(u8),
     GameStatus(GameForPlayer),
+    GameEnd,
+    HandResult(HandResult),
     Play,
     Wait,
     Status((String, u8)),
@@ -47,7 +50,8 @@ impl ToString for Response {
                     ServiceError::GameError(err) => {
                         formatted_msg = format!("game error: {}", err);
                         &formatted_msg
-                    }
+                    },
+                    ServiceError::NotYourTurn => "not your turn",
                 }
             ),
             Response::TableCreated(info) => format!(
@@ -63,6 +67,10 @@ impl ToString for Response {
             Response::GameStatus(game) => format!(
                 "GAME STATUS START\n{}\nGAME STATUS END\n",
                 serde_json::to_string_pretty(game).expect("Should serialize")
+            ),
+            Response::HandResult(result) => format!(
+                "HAND RESULT START\n{}\nHAND RESULT END\n",
+                serde_json::to_string_pretty(result).expect("Should serialize")
             ),
             Response::TableList(list) => {
                 let mut response = "TABLE LIST START\n".to_string();
@@ -80,6 +88,7 @@ impl ToString for Response {
                 "STATUS START\nNAME: {}\nJOINED TABLE: {}\nSTATUS END\n",
                 name, table_id
             ),
+            Response::GameEnd => "GAME END\n".to_string(),
         }
     }
 }
