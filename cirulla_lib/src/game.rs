@@ -5,9 +5,9 @@ use crate::{
     GameError,
 };
 use rand::seq::SliceRandom;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PlayerForPlayer {
     pub id: String,
     pub name: String,
@@ -20,7 +20,7 @@ pub struct PlayerForPlayer {
     pub dealer: bool,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct GameForPlayer {
     pub cards_in_deck: usize,
     pub cards_on_table: Vec<Card>,
@@ -41,7 +41,7 @@ pub struct Game {
     pub win_at: u8,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct HandResult {
     pub points: Vec<ComparativePoints>,
     pub someone_wins: bool,

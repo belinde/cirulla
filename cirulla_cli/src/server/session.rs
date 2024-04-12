@@ -1,5 +1,5 @@
 use super::{command::Command, response::Response};
-use log::{info, warn};
+use log::{debug, info, warn};
 use std::{
     io::{prelude::*, BufReader},
     net::TcpStream,
@@ -66,14 +66,12 @@ impl Session {
                 }
 
                 let command = Command::from_string(String::from_utf8_lossy(&incoming).as_ref());
+                debug!("Received command: {:?}", command);
                 if let Command::Quit = command {
                     break;
                 }
                 sender
-                    .send((
-                        session_id.clone(),
-                        command,
-                    ))
+                    .send((session_id.clone(), command))
                     .expect("Failed to send command");
             }
 

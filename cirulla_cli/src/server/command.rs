@@ -1,5 +1,6 @@
 use super::response::ServiceError;
 
+#[derive(Debug)]
 pub enum Command {
     Hello(String),
     Scream(String),
@@ -68,6 +69,23 @@ impl Command {
                 _ => Command::Error(ServiceError::InvalidCommand),
             },
             _ => Command::Error(ServiceError::InvalidCommand),
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Command::Hello(name) => format!("HELLO {}", name),
+            Command::Scream(message) => format!("SCREAM {}", message),
+            Command::Error(error) => format!("ERROR {}", error),
+            Command::Quit => "QUIT".to_string(),
+            Command::TableNew((name, player_max, win_at)) => {
+                format!("TABLE NEW \"{}\" {} {}", name, player_max, win_at)
+            }
+            Command::TableList => "TABLE LIST".to_string(),
+            Command::TableJoin(id) => format!("TABLE JOIN {}", id),
+            Command::TableLeave => "TABLE LEAVE".to_string(),
+            Command::Status => "STATUS".to_string(),
+            Command::Play(card) => format!("PLAY {}", card),
         }
     }
 }

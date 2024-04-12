@@ -1,16 +1,16 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::card::Card;
 use std::fmt::Display;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Effect {
     Knocked(u8),
     DeckHandlerBroom(u8),
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ComparativePoints {
     pub player_id: String,
     pub cards: u8,

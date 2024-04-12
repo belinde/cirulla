@@ -1,8 +1,10 @@
+mod client;
 mod local;
 mod server;
 mod ui;
 
 use clap::{Parser, ValueEnum};
+use client::Client;
 use local::LocalGame;
 use server::start_service;
 
@@ -45,15 +47,8 @@ fn main() {
     let args = Args::parse();
 
     match args.mode {
-        Mode::Server => {
-            start_service(args.address, args.port);
-        }
-        Mode::Client => {
-            println!("Connecting to {}:{}", args.address, args.port);
-            panic!("Client mode is not implemented yet");
-        }
-        Mode::Local => {
-            LocalGame::new(&args.name, args.win_at).start();
-        }
+        Mode::Server => start_service(args.address, args.port),
+        Mode::Client => Client::new(&args.address, args.port).start(),
+        Mode::Local => LocalGame::new(&args.name, args.win_at).start(),
     }
 }

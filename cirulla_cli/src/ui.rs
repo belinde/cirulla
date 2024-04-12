@@ -1,5 +1,6 @@
 use cirulla_lib::{Card, Effect, Game, HandResult, Player};
 use crossterm::style::Stylize;
+use crossterm::ExecutableCommand;
 use crossterm::{
     cursor::{Hide, MoveTo, Show},
     event::{read, Event, KeyCode},
@@ -7,6 +8,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
     QueueableCommand,
 };
+use std::cmp;
 use std::collections::HashMap;
 use std::{
     io::{stdout, Error, Stdout, Write},
@@ -32,6 +34,62 @@ impl UI {
         stdout.queue(Hide).unwrap().flush().unwrap();
 
         UI { stdout }
+    }
+
+    pub fn ask_for_input(
+        &mut self,
+        message: &str,
+        error: &Option<String>,
+    ) -> Result<String, Error> {
+        let width = 3 + match error {
+            Some(e) => cmp::max(e.len(), message.len()) as u16,
+            None => message.len() as u16,
+        };
+        self.clear()?;
+        self.draw_box(4, 2, width, if error.is_some() { 4 } else { 3 }, true)?;
+
+        if let Some(err) = error {
+            self.stdout.queue(MoveTo(6, 5))?.queue(Print(err))?;
+        }
+
+        self.stdout
+            .queue(MoveTo(6, 3))?
+            .queue(Print(message))?
+            .queue(MoveTo(6, 4))?
+            .queue(Print(">>> "))?;
+        self.apply()?;
+
+        let mut input = String::new();
+        loop {
+            match read()? {
+                Event::Key(evt) => match evt.code {
+                    KeyCode::Enter => {
+                        break;
+                    }
+                    KeyCode::Backspace => {
+                        input.pop();
+                    }
+                    KeyCode::Char(c) => {
+                        input.push(c);
+                    }
+                    KeyCode::Esc => {
+                        self.reset(true);
+                        process::exit(0);
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+
+            self.stdout
+                .queue(MoveTo(6, 4))?
+                .queue(Print("    "))?
+                .queue(MoveTo(6, 4))?
+                .queue(Print(input.as_str()))?
+                .flush()?;
+        }
+
+        Ok(input)
     }
 
     pub fn reset(&mut self, clear: bool) {

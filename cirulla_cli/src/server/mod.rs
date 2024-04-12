@@ -1,5 +1,5 @@
-mod command;
-mod response;
+pub mod command;
+pub mod response;
 mod server;
 mod session;
 mod table;

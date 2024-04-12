@@ -1,5 +1,6 @@
 use super::table::TableInfo;
 use cirulla_lib::{GameError, GameForPlayer, HandResult};
+use std::fmt::Display;
 
 #[derive(Clone, Debug)]
 pub enum ServiceError {
@@ -11,6 +12,21 @@ pub enum ServiceError {
     InvalidCommand,
     GameError(GameError),
     NotYourTurn,
+}
+
+impl Display for ServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ServiceError::NameInUse => write!(f, "name already in use"),
+            ServiceError::NotHello => write!(f, "you need to say hello first"),
+            ServiceError::TableNotFound => write!(f, "table not found"),
+            ServiceError::TableNameNotQuoted => write!(f, "table name must be quoted"),
+            ServiceError::TableAlreadyJoined => write!(f, "already joined a table"),
+            ServiceError::InvalidCommand => write!(f, "invalid command"),
+            ServiceError::GameError(err) => write!(f, "game error: {}", err),
+            ServiceError::NotYourTurn => write!(f, "not your turn"),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -50,7 +66,7 @@ impl ToString for Response {
                     ServiceError::GameError(err) => {
                         formatted_msg = format!("game error: {}", err);
                         &formatted_msg
-                    },
+                    }
                     ServiceError::NotYourTurn => "not your turn",
                 }
             ),
@@ -89,6 +105,131 @@ impl ToString for Response {
                 name, table_id
             ),
             Response::GameEnd => "GAME END\n".to_string(),
+        }
+    }
+}
+
+impl Response  {
+    pub fn from_string(msg: &str) -> Result<Response, ServiceError> {
+        let mut parts = msg.trim().splitn(2, ' ');
+        match parts.next() {
+            Some("HI") => Ok(Response::Hi(parts.next().unwrap_or_default().to_string())),
+            Some("SCREAM") => {
+                let mut parts = parts.next().unwrap_or_default().splitn(2, ' ');
+                Ok(Response::Scream((
+                    parts.next().unwrap_or_default().to_string(),
+                    parts.next().unwrap_or_default().to_string(),
+                )))
+            }
+            Some("ERROR:") => {
+                let error = parts.next().unwrap_or_default();
+                match error {
+                    "name already in use" => Ok(Response::Error(ServiceError::NameInUse)),
+                    "you need to say hello first" => Ok(Response::Error(ServiceError::NotHello)),
+                    "table not found" => Ok(Response::Error(ServiceError::TableNotFound)),
+                    "table name must be quoted" => Ok(Response::Error(ServiceError::TableNameNotQuoted)),
+                    "already joined a table" => Ok(Response::Error(ServiceError::TableAlreadyJoined)),
+                    "invalid command" => Ok(Response::Error(ServiceError::InvalidCommand)),
+                    "not your turn" => Ok(Response::Error(ServiceError::NotYourTurn)),
+                    _ => Ok(Response::Error(ServiceError::InvalidCommand)),
+                }
+            }
+            Some("TABLE") => match parts.next() {
+                Some("CREATED") => {
+                    let mut parts = parts.next().unwrap_or_default().splitn(4, ' ');
+                    let id = parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0);
+                    let name = parts.next().unwrap_or_default().trim_matches('"').to_string();
+                    let mut parts = parts.next().unwrap_or_default().splitn(2, '/');
+                    let player_count = parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0);
+                    let player_max = parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0);
+                    let win_at = parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0);
+                    Ok(Response::TableCreated(TableInfo {
+                        id,
+                        name,
+                        player_count,
+                        player_max,
+                        win_at,
+                    }))
+                }
+                Some("JOINED") => Ok(Response::TableJoined(
+                    parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0),
+                )),
+                Some("LEAVED") => Ok(Response::TableLeaved(
+                    parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0),
+                )),
+                Some("REMOVED") => Ok(Response::TableRemoved(
+                    parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0),
+                )),
+                Some("LIST") => {
+                    let mut tables = Vec::new();
+                    loop {
+                        let mut parts = parts.next().unwrap_or_default().splitn(4, ' ');
+                        let id = parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0);
+                        if id == 0 {
+                            break;
+                        }
+                        let name = parts.next().unwrap_or_default().trim_matches('"').to_string();
+                        let mut parts = parts.next().unwrap_or_default().splitn(2, '/');
+                        let player_count = parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0);
+                        let player_max = parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0);
+                        let win_at = parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0);
+                        tables.push(TableInfo {
+                            id,
+                            name,
+                            player_count,
+                            player_max,
+                            win_at,
+                        });
+                    }
+                    Ok(Response::TableList(tables))
+                }
+                _ => Err(ServiceError::InvalidCommand),
+            },
+            Some("WAIT") => Ok(Response::Wait),
+            Some("PLAY") => Ok(Response::Play),
+            Some("GAME") => match parts.next() {
+                Some("START") => Ok(Response::GameStart(
+                    parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0),
+                )),
+                Some("STATUS") => {
+                    let mut game = parts.next().unwrap_or_default().to_string();
+                    loop {
+                        let mut parts = parts.next().unwrap_or_default().splitn(2, '\n');
+                        if parts.next().unwrap_or_default() == "GAME STATUS END" {
+                            break;
+                        }
+                        game.push_str(parts.next().unwrap_or_default());
+                    }
+                    Ok(Response::GameStatus(
+                        serde_json::from_str(&game).expect("Should deserialize"),
+                    ))
+                }
+                Some("END") => Ok(Response::GameEnd),
+                _ => Err(ServiceError::InvalidCommand),
+            },
+            Some("HAND") => match parts.next() {
+                Some("RESULT") => {
+                    let mut result = parts.next().unwrap_or_default().to_string();
+                    loop {
+                        let mut parts = parts.next().unwrap_or_default().splitn(2, '\n');
+                        if parts.next().unwrap_or_default() == "HAND RESULT END" {
+                            break;
+                        }
+                        result.push_str(parts.next().unwrap_or_default());
+                    }
+                    Ok(Response::HandResult(
+                        serde_json::from_str(&result).expect("Should deserialize"),
+                    ))
+                }
+                _ => Err(ServiceError::InvalidCommand),
+            },
+            Some("STATUS") => {
+                let mut parts = parts.next().unwrap_or_default().splitn(2, '\n');
+                let name = parts.next().unwrap_or_default().to_string();
+                let table_id = parts.next().unwrap_or_default().parse::<u8>().unwrap_or(0);
+                Ok(Response::Status((name, table_id)))
+            }
+            _ => Err(ServiceError::InvalidCommand),
         }
     }
 }
